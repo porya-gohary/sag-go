@@ -1,0 +1,12 @@
+digraph {
+	graph [fontname=Ubuntu];
+	node [fontname=Ubuntu];
+	edge [fontname=Ubuntu];
+	s3[label=s3];
+	s4[label=s4];
+	s1[label=s1];
+	s2[label=s2];
+	s3 -> s4;
+	s1 -> s2;
+	s1 -> s3;
+}
