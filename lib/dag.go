@@ -1,10 +1,12 @@
 // Package dag implements directed acyclic graphs (DAGs).
-package dag
+package lib
 
 import (
 	"fmt"
 	"github.com/google/uuid"
 	"sync"
+	"log"
+	"os"
 )
 
 // IDInterface describes the interface a type must implement in order to
@@ -809,6 +811,44 @@ func copyMap(in map[interface{}]struct{}) map[interface{}]struct{} {
 		out[id] = value
 	}
 	return out
+}
+
+
+func (d *DAG)MakeDot (fileName string) {
+	dotOut := "digraph {\n"
+	dotOut += "\tgraph [fontname=Ubuntu];\n"
+	dotOut += "\tnode [fontname=Ubuntu];\n"
+	dotOut += "\tedge [fontname=Ubuntu];\n"
+	for _, v := range d.GetVertices() {
+		dotOut += fmt.Sprintf("\t%v[label=%v];\n", v.(State).Name, v.(State).Name)
+	}
+
+	for key, v := range d.GetVertices() {
+		x, _ := d.GetChildren(key)
+
+		for vertex := range x {
+			child, _ := d.GetVertex(vertex)
+			dotOut += fmt.Sprintf("\t%v -> %v;\n", v.(State).Name, child.(State).Name)
+		}
+	}
+	dotOut += "}"
+
+	f, err := os.Create(fileName+".dot")
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer f.Close()
+
+	_, err2 := f.WriteString(dotOut)
+
+	if err2 != nil {
+		log.Fatal(err2)
+	}
+
+	fmt.Println("Done!")
+
 }
 
 /***************************
