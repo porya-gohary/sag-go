@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go-test/lib"
 )
 
@@ -33,6 +34,12 @@ func main() {
 
 	// make dot file
 	d.MakeDot("out")
+
+	i:= lib.Interval{A: lib.Time(1), B: lib.Time(2)}
+	fmt.Println(i.String())
+
+	//read job set
+	lib.ReadJobSet("./example/example.csv")
 	
 }
 
