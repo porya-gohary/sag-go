@@ -23,8 +23,10 @@ type DAG struct {
 	muDAG            sync.RWMutex
 	vertices         map[interface{}]string
 	vertexIds        map[string]interface{}
-	inboundEdge      map[interface{}]map[interface{}]struct{}
-	outboundEdge     map[interface{}]map[interface{}]struct{}
+	inboundEdge      map[interface{}]map[interface{}]string
+	// inboundEdge      map[interface{}]map[interface{}]struct{}
+	outboundEdge     map[interface{}]map[interface{}]string
+	// outboundEdge     map[interface{}]map[interface{}]struct{}
 	muCache          sync.RWMutex
 	verticesLocked   *dMutex
 	ancestorsCache   map[interface{}]map[interface{}]struct{}
@@ -36,8 +38,8 @@ func NewDAG() *DAG {
 	return &DAG{
 		vertices:         make(map[interface{}]string),
 		vertexIds:        make(map[string]interface{}),
-		inboundEdge:      make(map[interface{}]map[interface{}]struct{}),
-		outboundEdge:     make(map[interface{}]map[interface{}]struct{}),
+		inboundEdge:      make(map[interface{}]map[interface{}]string),
+		outboundEdge:     make(map[interface{}]map[interface{}]string),
 		verticesLocked:   newDMutex(),
 		ancestorsCache:   make(map[interface{}]map[interface{}]struct{}),
 		descendantsCache: make(map[interface{}]map[interface{}]struct{}),
@@ -156,7 +158,7 @@ func (d *DAG) DeleteVertex(id string) error {
 // AddEdge adds an edge between srcID and dstID. AddEdge returns an
 // error, if srcID or dstID are empty strings or unknown, if the edge
 // already exists, or if the new edge would create a loop.
-func (d *DAG) AddEdge(srcID, dstID string) error {
+func (d *DAG) AddEdge(srcID, dstID string,label string) error {
 
 	d.muDAG.Lock()
 	defer d.muDAG.Unlock()
@@ -191,19 +193,19 @@ func (d *DAG) AddEdge(srcID, dstID string) error {
 
 	// prepare d.outbound[src], iff needed
 	if _, exists := d.outboundEdge[src]; !exists {
-		d.outboundEdge[src] = make(map[interface{}]struct{})
+		d.outboundEdge[src] = make(map[interface{}]string)
 	}
 
 	// dst is a child of src
-	d.outboundEdge[src][dst] = struct{}{}
+	d.outboundEdge[src][dst] = label
 
 	// prepare d.inboundEdge[dst], iff needed
 	if _, exists := d.inboundEdge[dst]; !exists {
-		d.inboundEdge[dst] = make(map[interface{}]struct{})
+		d.inboundEdge[dst] = make(map[interface{}]string)
 	}
 
 	// src is a parent of dst
-	d.inboundEdge[dst][src] = struct{}{}
+	d.inboundEdge[dst][src] = label
 
 	// for dst and all its descendants delete cached ancestors
 	for descendant := range descendants {
@@ -255,6 +257,26 @@ func (d *DAG) isEdge(src, dst interface{}) bool {
 		return false
 	}
 	return true
+}
+
+func (d *DAG) GetEdgeLable(srcID, dstID string) (string, error) {
+	d.muDAG.RLock()
+	defer d.muDAG.RUnlock()
+
+	if exists, err := d.IsEdge(srcID, dstID); exists {
+		fmt.Println(srcID, dstID)
+		fmt.Print(d.inboundEdge[srcID][dstID])
+		return d.getEdgeLable(d.vertexIds[srcID], d.vertexIds[dstID]), nil
+	}else {
+		return "", err
+	}
+
+}
+
+func (d *DAG) getEdgeLable(src, dst interface{}) string {
+
+	return d.outboundEdge[src][dst]
+
 }
 
 // DeleteEdge deletes the edge between srcID and dstID. DeleteEdge
@@ -820,7 +842,8 @@ func (d *DAG)MakeDot (fileName string) {
 	dotOut += "\tnode [fontname=Ubuntu];\n"
 	dotOut += "\tedge [fontname=Ubuntu];\n"
 	for _, v := range d.GetVertices() {
-		dotOut += fmt.Sprintf("\t%v[label=%v];\n", v.(State).Name, v.(State).Name)
+		// dotOut += fmt.Sprintf("\t%v[label=%v];\n", v.(State).GetName(), v.(State).GetName())
+		dotOut += fmt.Sprintf("\t%v[label=%v];\n", v, v)
 	}
 
 	for key, v := range d.GetVertices() {
@@ -828,7 +851,10 @@ func (d *DAG)MakeDot (fileName string) {
 
 		for vertex := range x {
 			child, _ := d.GetVertex(vertex)
-			dotOut += fmt.Sprintf("\t%v -> %v;\n", v.(State).Name, child.(State).Name)
+			label,_ :=d.GetEdgeLable(key, vertex)
+			fmt.Print(label)
+			dotOut += fmt.Sprintf("\t%v -> %v", v, child)
+			dotOut += fmt.Sprintf("[label=\"%v\",color=Red,fontcolor=Red;\n",label)
 		}
 	}
 	dotOut += "}"
