@@ -2,11 +2,8 @@ digraph {
 	graph [fontname=Ubuntu];
 	node [fontname=Ubuntu];
 	edge [fontname=Ubuntu];
-	s1[label=s1];
-	s2[label=s2];
-	s3[label=s3];
-	s4[label=s4];
-	s1 -> s2;
-	s1 -> s3;
-	s3 -> s4;
+	S2[label=S2];
+	S3[label=S3];
+	S1[label=S1];
+	S1 -> S2[label="v1->v2",color=Red,fontcolor=Red];
 }

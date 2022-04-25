@@ -8,38 +8,41 @@ import (
 
 func main() {
 
+	//read job set
+	jobs:=lib.ReadJobSet("./example/example.csv")
+	fmt.Print(jobs.String())
+
 	// initialize a new graph
 	d := lib.NewDAG()
 
-	// init three vertices
+	states := lib.NewStateStorage()
+	states.Initialize()
 	
-	s1 := lib.State{Name: "s1", Age: 50}
-	v1, _ := d.AddVertex(s1)
+	// init three vertices
+	s1 := lib.NewState(1,lib.Interval{Start: 0, End: 100}, lib.JobSet{jobs[1]}, lib.Time(0))
+	states.AddState(s1)
+	v1, _ := d.AddVertex(s1.GetName())
 
-	s2 := lib.State{Name: "s2", Age: 50}
-	v2, _ := d.AddVertex(s2)
+	s2 := lib.NewState(2,lib.Interval{Start: 0, End: 100}, lib.JobSet{jobs[1],jobs[3]}, lib.Time(0))
+	states.AddState(s2)
+	v2, _ := d.AddVertex(s2.GetName())
 
-	s3 := lib.State{Name: "s3", Age: 50}
-	v3, _ := d.AddVertex(s3)
+	s3 := lib.NewState(3,lib.Interval{Start: 0, End: 100}, lib.JobSet{jobs[1],jobs[3],jobs[2]}, lib.Time(0))
+	states.AddState(s3)
+	d.AddVertex(s3.GetName())
 
-	s4 := lib.State{Name: "s4", Age: 50}
-	v4, _ := d.AddVertex(s4)
 
 	// add the above vertices and connect them with two edges
-	_ = d.AddEdge(v1, v2)
-	_ = d.AddEdge(v1, v3)
-	_ = d.AddEdge(v3, v4)
+	_ = d.AddEdge(v1, v2,"v1->v2")
+
+	
 
 	// describe the graph
 
 	// make dot file
 	d.MakeDot("out")
 
-	i:= lib.Interval{A: lib.Time(1), B: lib.Time(2)}
-	fmt.Println(i.String())
-
-	//read job set
-	lib.ReadJobSet("./example/example.csv")
+	fmt.Println(states.String())
 	
 }
 

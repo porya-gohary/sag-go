@@ -8,7 +8,8 @@ import (
 )
 
 
-func ReadJobSet(filename string) []Job {
+func ReadJobSet(filename string) JobSet {
+	var jobs JobSet
 
 	csvFile, err := os.Open(filename)
 	if err != nil {
@@ -49,13 +50,14 @@ func ReadJobSet(filename string) []Job {
 			Name: jobName,
 			TaskID: taskid,
 			JobID: jobid,
-			Arrival: Interval{A: Time(arrivalMin), B: Time(arrivalMax)},
-			Cost: Interval{A: Time(costMin), B: Time(costMax)},
+			Arrival: Interval{Start: Time(arrivalMin), End: Time(arrivalMax)},
+			Cost: Interval{Start: Time(costMin), End: Time(costMax)},
 			Deadline: Time(deadline),
 			Priority: Time(priority),
         }
-        fmt.Println(jobInstance.String())
+        // fmt.Println(jobInstance.String())
+		jobs = append(jobs, jobInstance)
     }
 
-	return nil
+	return jobs
 }

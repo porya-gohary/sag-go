@@ -264,8 +264,6 @@ func (d *DAG) GetEdgeLable(srcID, dstID string) (string, error) {
 	defer d.muDAG.RUnlock()
 
 	if exists, err := d.IsEdge(srcID, dstID); exists {
-		fmt.Println(srcID, dstID)
-		fmt.Print(d.inboundEdge[srcID][dstID])
 		return d.getEdgeLable(d.vertexIds[srcID], d.vertexIds[dstID]), nil
 	}else {
 		return "", err
@@ -852,9 +850,8 @@ func (d *DAG)MakeDot (fileName string) {
 		for vertex := range x {
 			child, _ := d.GetVertex(vertex)
 			label,_ :=d.GetEdgeLable(key, vertex)
-			fmt.Print(label)
 			dotOut += fmt.Sprintf("\t%v -> %v", v, child)
-			dotOut += fmt.Sprintf("[label=\"%v\",color=Red,fontcolor=Red;\n",label)
+			dotOut += fmt.Sprintf("[label=\"%v\",color=Red,fontcolor=Red];\n",label)
 		}
 	}
 	dotOut += "}"

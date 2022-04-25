@@ -5,44 +5,44 @@ import (
 )
 
 type Interval struct {
-	A Time
-	B Time
+	Start Time
+	End Time
 }
 
 
 func (i Interval) Intersects(j Interval) bool {
-	return i.A <= j.B && j.A <= i.B
+	return i.Start <= j.End && j.Start <= i.End
 }
 
 func (i Interval) Contains(j Interval) bool {
-	return i.A <= j.B && j.A <= i.B
+	return i.Start <= j.End && j.Start <= i.End
 }
 
 func (i Interval) Overlaps(j Interval) bool {
-	return i.A <= j.A && j.A <= i.B || i.A <= j.B && j.B <= i.B
+	return i.Start <= j.Start && j.Start <= i.End || i.Start <= j.End && j.End <= i.End
 }
 
 func (i Interval) From() Time {
-	return i.A
+	return i.Start
 }
 
 func (i Interval) Min() Time {
-	return i.A
+	return i.Start
 }
 
 func (i Interval) Until() Time {
-	return i.B
+	return i.End
 }
 
 func (i Interval) Max() Time {
-	return i.B
+	return i.End
 }
 
 func (i Interval) Length() int {
-	return int(i.B - i.A)
+	return int(i.End - i.Start)
 }
 
 func (i Interval) String() string {
-	return "I[" + i.A.String() + "," + i.B.String() + "]"
+	return "I[" + i.Start.String() + "," + i.End.String() + "]"
 }
 
