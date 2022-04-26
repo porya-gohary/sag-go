@@ -2,15 +2,32 @@ package main
 
 import (
 	"fmt"
+	"time"
 	"go-test/lib"
 )
 
 
 func main() {
 
+	start := time.Now()
+
 	//read job set
-	jobs:=lib.ReadJobSet("./example/example.csv")
-	fmt.Print(jobs.String())
+	workload:=lib.ReadJobSet("./example/example.csv")
+	
+	jobsByArrival:= make(lib.JobSet,len(workload))
+	jobsByDeadline:= make(lib.JobSet,len(workload))
+	jobsByPriority:= make(lib.JobSet,len(workload))
+
+
+	copy(jobsByArrival, workload)
+	copy(jobsByDeadline, workload)
+	copy(jobsByPriority, workload)
+
+
+	jobsByArrival.SortByArrival()
+	jobsByDeadline.SortByDeadline()
+	jobsByPriority.SortByPriority()
+
 
 	// initialize a new graph
 	d := lib.NewDAG()
@@ -19,15 +36,15 @@ func main() {
 	states.Initialize()
 	
 	// init three vertices
-	s1 := lib.NewState(1,lib.Interval{Start: 0, End: 100}, lib.JobSet{jobs[1]}, lib.Time(0))
+	s1 := lib.NewState(1,lib.Interval{Start: 0, End: 100}, lib.JobSet{workload[1]}, lib.Time(0))
 	states.AddState(s1)
 	v1, _ := d.AddVertex(s1.GetName())
 
-	s2 := lib.NewState(2,lib.Interval{Start: 0, End: 100}, lib.JobSet{jobs[1],jobs[3]}, lib.Time(0))
+	s2 := lib.NewState(2,lib.Interval{Start: 0, End: 100}, lib.JobSet{workload[1],workload[3]}, lib.Time(0))
 	states.AddState(s2)
 	v2, _ := d.AddVertex(s2.GetName())
 
-	s3 := lib.NewState(3,lib.Interval{Start: 0, End: 100}, lib.JobSet{jobs[1],jobs[3],jobs[2]}, lib.Time(0))
+	s3 := lib.NewState(3,lib.Interval{Start: 0, End: 100}, lib.JobSet{workload[1],workload[3],workload[2]}, lib.Time(0))
 	states.AddState(s3)
 	d.AddVertex(s3.GetName())
 
@@ -42,7 +59,12 @@ func main() {
 	// make dot file
 	d.MakeDot("out")
 
-	fmt.Println(states.String())
+	// fmt.Println(states.String())
+	fmt.Print(jobsByArrival.String())
+	fmt.Print(jobsByDeadline.String())
+	fmt.Print(jobsByPriority.String())
+
+	fmt.Println(time.Since(start))
 	
 }
 

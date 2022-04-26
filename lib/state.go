@@ -5,7 +5,7 @@ import (
 )
 
 type State struct {
-	Index int
+	Index uint
 	Availibility Interval
 	ScheduledJobs JobSet
 	EarliestPendingRelease Time
@@ -14,7 +14,7 @@ type State struct {
 type StateStorage map[string]State
 
 // functions for state
-func NewState(index int,finishTime Interval,j JobSet,earliestRelease Time) State {
+func NewState(index uint,finishTime Interval,j JobSet,earliestRelease Time) State {
 
 	return State{
 		Index: index,
@@ -25,7 +25,9 @@ func NewState(index int,finishTime Interval,j JobSet,earliestRelease Time) State
 }
 
 func (s State) GetName() string {
-	return "S"+strconv.Itoa(s.Index)
+	return "S"+strconv.FormatUint(uint64(s.Index), 10)
+	
+	
 }
 
 func (s State) ID() string {
