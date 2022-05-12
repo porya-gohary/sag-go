@@ -2,8 +2,8 @@ digraph {
 	graph [fontname=Ubuntu];
 	node [fontname=Ubuntu];
 	edge [fontname=Ubuntu];
+	S1[label=S1];
 	S2[label=S2];
 	S3[label=S3];
-	S1[label=S1];
 	S1 -> S2[label="v1->v2",color=Red,fontcolor=Red];
 }

@@ -11,12 +11,12 @@ type State struct {
 	EarliestPendingRelease Time
 }
 
-type StateStorage map[string]State
+type StateStorage map[string]*State
 
 // functions for state
-func NewState(index uint,finishTime Interval,j JobSet,earliestRelease Time) State {
+func NewState(index uint,finishTime Interval,j JobSet,earliestRelease Time) *State {
 
-	return State{
+	return &State{
 		Index: index,
 		Availibility: finishTime,
 		ScheduledJobs: j,
@@ -44,13 +44,10 @@ func NewStateStorage() *StateStorage {
 	return &StateStorage{}
 }
 
-func (s *StateStorage) Initialize() {
-	s0 := NewState(0,Interval{Start: 0, End: 0}, JobSet{}, Time(0))
-	s.AddState(s0)
-}
 
-func (s StateStorage) AddState (st State){
-	s[st.ID()] = st
+
+func (s *StateStorage) AddState (st *State){
+	(*s)[(*st).ID()] = st
 }
 
 func (s StateStorage) String() string{

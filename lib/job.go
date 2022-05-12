@@ -37,7 +37,7 @@ func (j JobSet) String() string {
 func (j JobSet) AbstractString() string{
 	var s string
 	for _, job := range j {
-		s += job.Name + ","
+		s += job.Name + " - "
 	}
 	return s
 }
