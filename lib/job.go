@@ -43,9 +43,16 @@ func (j JobSet) AbstractString() string{
 }
 
 
-func (S JobSet) SortByArrival() JobSet {
+func (S JobSet) SortByEarliestArrival() JobSet {
 	sort.Slice(S, func(i, j int) bool {
 		return S[i].Arrival.Start < S[j].Arrival.Start
+	})
+	return S
+}
+
+func (S JobSet) SortByLatestArrival() JobSet {
+	sort.Slice(S, func(i, j int) bool {
+		return S[i].Arrival.End < S[j].Arrival.End
 	})
 	return S
 }
