@@ -2,8 +2,8 @@ package lib
 
 import (
 	"fmt"
-	"time"
 	"math"
+	"time"
 )
 
 type resposeTimes map[string]Interval
@@ -74,9 +74,6 @@ func exploreState(state *State) {
 	ts_min := state.Availibility.From()
 	rel_min := state.EarliestPendingRelease
 	t_l := math.Max(float64(nextEligibleJobReady(state)), float64(state.Availibility.Until()))
-	
-
-	
 
 	nextRange := Interval{Start: Time(math.Min(float64(ts_min), float64(rel_min))), End: Time(t_l)}
 
@@ -132,7 +129,7 @@ func nextEligibleJobReady(state *State) Time {
 		// 	continue
 		// }
 
-		if (priorityEligible(state, j, Time(t))) {
+		if priorityEligible(state, j, Time(t)) {
 			return j.Arrival.Until()
 		}
 
@@ -183,4 +180,189 @@ func certainlyReleasedHigherPriorityExists(state *State, j Job, at Time) bool {
 	}
 	return false
 
+}
+
+func schedule_eligible_successors(s *State, nextRange Interval) bool {
+	for _, j := range jobsByEarliestArrival {
+
+		if j.Arrival.Start < s.EarliestPendingRelease {
+			continue
+		}
+
+		if j.Arrival.Start > nextRange.End {
+			break
+		}
+
+		if isDispatched(s.ScheduledJobs, j) {
+			continue
+		}
+
+		if isEligibleSuccessor(s, j) {
+
+			schedule(s, j)
+
+			return true
+		}
+
+	}
+
+	return false
+}
+
+func isEligibleSuccessor(s *State, j Job) bool {
+
+	if isDispatched(s.ScheduledJobs, j) {
+		return false
+	}
+
+	// TODO: implement later
+	// if !ready(){
+	// 	return false
+	// }
+
+	t_s := nextEarliestStartTime(s, j)
+
+	if priorityEligible(s, j, t_s) {
+		return false
+	}
+
+	if !potentiallyNext(s, j) {
+		return false
+	}
+
+	// TODO: implement later
+	// if (!iip_eligible(s, j, t_s)) {
+	// 	return false
+	// }
+
+	return true
+
+}
+
+func nextEarliestStartTime(s *State, j Job) Time {
+	// t_S in paper, see definition 6.
+	return Time(math.Max(float64(j.Arrival.Start), float64(s.Availibility.From())))
+}
+
+func potentiallyNext(s *State, j Job) bool {
+	t_latest := s.Availibility.Until()
+
+	// if t_latest >=  j.earliest_arrival(), then the
+	// job is trivially potentially next, so check the other case.
+
+	if t_latest < j.Arrival.Start {
+		r := nextCertainJobRelease(s)
+
+		// if something else is certainly released before j and IIP-
+		// eligible at the time of certain release, then j can't
+		// possibly be next
+
+		if r < j.Arrival.Start {
+			return false
+		}
+
+	}
+	return true
+}
+
+func nextCertainJobRelease(s *State) Time {
+	alreadyScheduled := s.ScheduledJobs
+
+	for _, j := range jobsByEarliestArrival {
+
+		if j.Arrival.Start < s.Availibility.Start {
+			continue
+		}
+
+		// not relevant if already scheduled
+		if isDispatched(alreadyScheduled, j) {
+			continue
+		}
+
+		// TODO: implement later
+		// If the job is not IIP-eligible when it is certainly
+		// released, then there exists a schedule where it doesn't
+		// count, so skip it.
+
+		// if (!iip_eligible(s, j, std::max(j.latestArrival(), s.latest_finish_time())))
+		//                 continue;
+
+		// It must be priority-eligible when released, too.
+		// Relevant only if we have an IIP, otherwise the job is
+		// trivially priority-eligible.
+
+		// if (iip.can_block &&
+		// 	!priority_eligible(s, j, std::max(j.latestArrival(), s.latest_finish_time())))
+		// 	continue;
+
+		// great, this job fits the bill
+		return j.Arrival.End
+
+	}
+	return Infinity()
+
+}
+
+func schedule(s *State, j Job) {
+	finishRange := nextFinishTimes(s, j)
+
+}
+
+func nextFinishTimes(s *State, j Job) Interval {
+	// standard case -- this job is never aborted or skipped
+	i := Interval{Start: nextEarliestFinishTime(s, j), End: nextLatestFinishTime(s, j)}
+
+	return i
+}
+
+func nextEarliestFinishTime(s *State, j Job) Time {
+	earliestStart := nextEarliestStartTime(s, j)
+
+	return Time(earliestStart + j.Cost.Min())
+}
+
+func nextLatestFinishTime(s *State, j Job) Time {
+	otherCertainStart := nextCertainHigherPriorityJobRelease(s, j)
+
+	// TODO: implement later
+	// t_s := nextEarliestStartTime(s, j)
+	// iip_latest_start := iip.latest_start(j, t_s, s);
+
+	// t_s'
+	// t_L
+	ownLatestStart := math.Max(float64(nextEligibleJobReady(s)), float64(s.Availibility.Until()))
+
+	// t_R, t_I
+	// TODO: add iip_latest_start later
+	lastStartBeforeOther := otherCertainStart - Epsilon()
+
+	latestFinishTime := Time(math.Min(float64(ownLatestStart), float64(lastStartBeforeOther)))
+
+	return latestFinishTime + j.Cost.Max()
+
+}
+
+func nextCertainHigherPriorityJobRelease(s *State, j Job) Time {
+	alreadyScheduled := s.ScheduledJobs
+
+	for _, jt := range jobsByLatestArrival {
+
+		if jt.Arrival.End < s.Availibility.Start {
+			continue
+		}
+
+		// not relevant if already scheduled
+		if isDispatched(alreadyScheduled, jt) {
+			continue
+		}
+
+		if !jt.higherPriorityThan(j) {
+			continue
+		}
+
+		// great, this job fits the bill
+		return j.Arrival.End
+
+	}
+	return Infinity()
 }
