@@ -16,3 +16,7 @@ func (t Time) String() string {
 func Infinity() Time {
 	return Time(math.MaxInt64)
 }
+
+func Epsilon() Time {
+	return Time(math.MinInt64)
+}

@@ -21,6 +21,27 @@ func (j Job) String() string {
 	return j.Name + "\t" + j.Arrival.String()+ "\t" + j.Cost.String()+ "\t" + j.Deadline.String() + "\t" + j.Priority.String()
 }
 
+func (j Job)higherPriorityThan(other Job)bool{
+
+	if j.Priority < other.Priority{
+		return true
+	}
+
+	if j.Priority == other.Priority{
+		// first tie-break by task ID
+		if j.TaskID < other.TaskID {
+			return true
+		}else if j.TaskID == other.TaskID{
+			 // second, tie-break by job instance
+			if j.JobID < other.JobID{
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 
 
 
