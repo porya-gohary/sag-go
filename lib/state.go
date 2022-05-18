@@ -9,6 +9,7 @@ type State struct {
 	Availibility           Interval
 	ScheduledJobs          JobSet
 	EarliestPendingRelease Time
+	ID  				   string	
 }
 
 type StateStorage map[string]*State
@@ -29,8 +30,8 @@ func (s State) GetName() string {
 
 }
 
-func (s State) ID() string {
-	return s.GetName()
+func (s State) GetID() string {
+	return s.ID
 }
 
 func (s State) String() string {
@@ -44,7 +45,7 @@ func NewStateStorage() *StateStorage {
 }
 
 func (s *StateStorage) AddState(st *State) {
-	(*s)[(*st).ID()] = st
+	(*s)[(*st).GetName()] = st
 }
 
 func (s *StateStorage) GetState(name string) *State {

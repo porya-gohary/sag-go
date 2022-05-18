@@ -42,6 +42,10 @@ func (j Job)higherPriorityThan(other Job)bool{
 	return false
 }
 
+func (j Job) SameJob(other Job) bool {
+	return j.Name == other.Name
+}
+
 
 
 
