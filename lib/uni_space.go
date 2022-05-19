@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"time"
+	"github.com/lfkeitel/verbose"
 )
 
 type resposeTimes map[string]Interval
@@ -29,9 +30,12 @@ var rta resposeTimes
 var aborted bool = false
 var deadlineMiss bool = false
 
-func ExploreNaively(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
+var logger *verbose.Logger
+
+func ExploreNaively(workload JobSet, timeout uint, earlyExit bool, maxDepth uint,v *verbose.Logger) {
 	beNaive = true
 	startTime = time.Now()
+	logger = v
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
 }
@@ -63,9 +67,9 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 	for currentJobCount < len(workload) {
 		frontStates := giveFrontStates()
 		for _, state := range frontStates {
-			fmt.Println(state.String())
+			logger.Debug("==========================================")
+			logger.Debug("Looking at: ", state.GetName())
 			foundJob:= exploreState(state)
-
 			if !foundJob && len(state.ScheduledJobs) != len(workload) {
 				// out of options and we didn't schedule all jobs
 				deadlineMiss = true
@@ -76,8 +80,8 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 				}
 			}
 		}
-		fmt.Println("-----------------------")
 		if aborted {
+			fmt.Println("---> Aborted")
 			break
 		}
 
@@ -98,6 +102,11 @@ func exploreState(state *State) bool {
 	t_l := math.Max(float64(nextEligibleJobReady(state)), float64(state.Availibility.Until()))
 
 	nextRange := Interval{Start: Time(math.Min(float64(ts_min), float64(rel_min))), End: Time(t_l)}
+
+	logger.Debug("ts_min: ", ts_min)
+	logger.Debug("rel_min: ", rel_min)
+	logger.Debug("t_l: ", t_l)
+	logger.Debug("Next range: ", nextRange.String())
 
 	// Iterate over all incomplete jobs that are released no later than nextRange.End
 	for _,jt := range jobsByEarliestArrival {
@@ -132,7 +141,6 @@ func initialize() {
 	s0.ID=v1
 	states.AddState(s0)
 	
-	fmt.Println("Initialize: ", fmt.Sprint(v1))
 	statesIndex++
 
 
@@ -147,8 +155,11 @@ func makeState(finishTime Interval, j JobSet, earliestReleasePending Time,
 	dag.AddEdge(parentState.GetID(), newStateID, dispatchedJob.Name)
 	
 	statesIndex++
-	fmt.Println("Make state: ", s.String())
-	fmt.Println("")
+	logger.Debug("Make state: ", s.GetName())
+	logger.Debug("Availibility: ",s.Availibility.String())
+	logger.Debug("Earliest pending release: ",s.EarliestPendingRelease)
+	logger.Debug("Scheduled jobs: ",s.ScheduledJobs.AbstractString())
+	logger.Debug("----------------------------------------")
 }
 
 func giveFrontStates() []*State {
@@ -211,6 +222,10 @@ func certainlyReleasedHigherPriorityExists(state *State, j Job, at Time) bool {
 			break
 		}
 
+		if isDispatched(state.ScheduledJobs, jt) {
+			continue
+		}
+
 		// skip reference job
 		if jt.Name == j.Name {
 			continue
@@ -223,7 +238,8 @@ func certainlyReleasedHigherPriorityExists(state *State, j Job, at Time) bool {
 		// }
 
 		// check priority
-		if jt.Priority > j.Priority {
+		if jt.higherPriorityThan(j) {
+			logger.Debug("=> Found higher priority job: ", jt.Name)
 			return true
 		}
 
@@ -262,6 +278,7 @@ func schedule_eligible_successors(s *State, nextRange Interval) bool {
 func isEligibleSuccessor(s *State, j Job) bool {
 
 	if isDispatched(s.ScheduledJobs, j) {
+		logger.Debug("Job ", j.Name, "   --> already complete")
 		return false
 	}
 
@@ -272,11 +289,13 @@ func isEligibleSuccessor(s *State, j Job) bool {
 
 	t_s := nextEarliestStartTime(s, j)
 
-	if priorityEligible(s, j, t_s) {
+	if !priorityEligible(s, j, t_s) {
+		logger.Debug("Job ", j.Name, "   --> not priority eligible")
 		return false
 	}
 
 	if !potentiallyNext(s, j) {
+		logger.Debug("Job ", j.Name, "   --> not potentially next")
 		return false
 	}
 
@@ -357,6 +376,8 @@ func schedule(s *State, j Job) {
 	finishRange := nextFinishTimes(s, j)
 
 	scheduledJobs := append(s.ScheduledJobs, j)
+
+	logger.Debug("Dispatch job: ", j.Name)
 
 	if beNaive {
 		makeState(finishRange, scheduledJobs, earliestPossibleJobRelease(s, j), s, j)

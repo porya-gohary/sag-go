@@ -1,22 +1,22 @@
 package lib
 
 import(
-	"strconv"
+	"fmt"
 	"math"
 )
 
 
-type Time int
+type Time float32
 
 
 func (t Time) String() string {
-	return strconv.Itoa(int(t))
+	return fmt.Sprintf("%f",float32(t))
 }
 
 func Infinity() Time {
-	return Time(math.MaxInt)
+	return Time(math.MaxFloat32)
 }
 
 func Epsilon() Time {
-	return Time(math.MinInt)
+	return Time(math.SmallestNonzeroFloat32)
 }

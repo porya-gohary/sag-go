@@ -22,6 +22,7 @@ func ReadJobSet(filename string) JobSet {
 
 
     reader := csv.NewReader(csvFile)
+	reader.TrimLeadingSpace = true
 
 	// skip first line
 	if _, err := reader.Read(); err != nil {
