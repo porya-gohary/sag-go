@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"time"
 	"go-test/lib"
 	"github.com/lfkeitel/verbose"
@@ -21,14 +20,16 @@ func main() {
 	
 
 
-	fmt.Println(time.Since(start))
-	logger := verbose.New("app")
+	
+	logger := verbose.New("NP::uni")
 	sh := verbose.NewStdoutHandler(true)
 	logger.AddHandler("123",sh)
 
 
 
 	lib.ExploreNaively(workload, 10, true, 10,logger)
+	logger.Info("Naive exploration finished")
+	logger.Info("Time elapsed: ", time.Since(start))
 
 }
 

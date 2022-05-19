@@ -23,6 +23,7 @@ type DAG struct {
 	muDAG            sync.RWMutex
 	vertices         map[interface{}]string
 	vertexIds        map[string]interface{}
+	vertexLabel		 map[string]string
 	inboundEdge      map[interface{}]map[interface{}]string
 	// inboundEdge      map[interface{}]map[interface{}]struct{}
 	outboundEdge     map[interface{}]map[interface{}]string
@@ -38,6 +39,7 @@ func NewDAG() *DAG {
 	return &DAG{
 		vertices:         make(map[interface{}]string),
 		vertexIds:        make(map[string]interface{}),
+		vertexLabel:      make(map[string]string),
 		inboundEdge:      make(map[interface{}]map[interface{}]string),
 		outboundEdge:     make(map[interface{}]map[interface{}]string),
 		verticesLocked:   newDMutex(),
@@ -49,7 +51,7 @@ func NewDAG() *DAG {
 // AddVertex adds the vertex v to the DAG. AddVertex returns an error, if v is
 // nil, v is already part of the graph, or the id of v is already part of the
 // graph.
-func (d *DAG) AddVertex(v interface{}) (string, error) {
+func (d *DAG) AddVertex(v interface{},label string) (string, error) {
 
 	d.muDAG.Lock()
 	defer d.muDAG.Unlock()
@@ -62,10 +64,10 @@ func (d *DAG) AddVertex(v interface{}) (string, error) {
 		return "", VertexDuplicateError{v}
 	}
 
-	return d.addVertex(v)
+	return d.addVertex(v,label)
 }
 
-func (d *DAG) addVertex(v interface{}) (string, error) {
+func (d *DAG) addVertex(v interface{},label string) (string, error) {
 
 	var id string
 	if i, ok := v.(IDInterface); ok {
@@ -79,6 +81,7 @@ func (d *DAG) addVertex(v interface{}) (string, error) {
 
 	d.vertices[v] = id
 	d.vertexIds[id] = v
+	d.vertexLabel[id] = label
 
 	return id, nil
 }
@@ -275,6 +278,21 @@ func (d *DAG) getEdgeLable(src, dst interface{}) string {
 
 	return d.outboundEdge[src][dst]
 
+}
+
+func (d *DAG) GetVertexLabel(id string) (string, error) {
+	d.muDAG.RLock()
+	defer d.muDAG.RUnlock()
+
+	if err := d.saneID(id); err != nil {
+		return "", err
+	}
+
+	return d.getVertexLabel(id), nil
+}
+
+func (d *DAG) getVertexLabel(id string) string {
+	return d.vertexLabel[id]
 }
 
 // DeleteEdge deletes the edge between srcID and dstID. DeleteEdge
@@ -839,9 +857,9 @@ func (d *DAG)MakeDot (fileName string) {
 	dotOut += "\tgraph [fontname=Ubuntu];\n"
 	dotOut += "\tnode [fontname=Ubuntu];\n"
 	dotOut += "\tedge [fontname=Ubuntu];\n"
-	for _, v := range d.GetVertices() {
+	for key, v := range d.GetVertices() {
 		// dotOut += fmt.Sprintf("\t%v[label=%v];\n", v.(State).GetName(), v.(State).GetName())
-		dotOut += fmt.Sprintf("\t%v[label=%v];\n", v, v)
+		dotOut += fmt.Sprintf("\t%v[label=%v];\n", v, d.getVertexLabel(key))
 	}
 
 	for key, v := range d.GetVertices() {

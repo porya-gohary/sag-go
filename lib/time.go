@@ -20,3 +20,18 @@ func Infinity() Time {
 func Epsilon() Time {
 	return Time(math.SmallestNonzeroFloat32)
 }
+
+
+func Maximum(t1, t2 Time) Time {
+	if t1 > t2 {
+		return t1
+	}
+	return t2
+}
+
+func Minimum(t1, t2 Time) Time {
+	if t1 < t2 {
+		return t1
+	}
+	return t2
+}

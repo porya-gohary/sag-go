@@ -2,9 +2,9 @@ package lib
 
 import (
 	"fmt"
+	"github.com/lfkeitel/verbose"
 	"math"
 	"time"
-	"github.com/lfkeitel/verbose"
 )
 
 type resposeTimes map[string]Interval
@@ -32,7 +32,7 @@ var deadlineMiss bool = false
 
 var logger *verbose.Logger
 
-func ExploreNaively(workload JobSet, timeout uint, earlyExit bool, maxDepth uint,v *verbose.Logger) {
+func ExploreNaively(workload JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verbose.Logger) {
 	beNaive = true
 	startTime = time.Now()
 	logger = v
@@ -69,19 +69,19 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 		for _, state := range frontStates {
 			logger.Debug("==========================================")
 			logger.Debug("Looking at: ", state.GetName())
-			foundJob:= exploreState(state)
+			foundJob := exploreState(state)
 			if !foundJob && len(state.ScheduledJobs) != len(workload) {
 				// out of options and we didn't schedule all jobs
 				deadlineMiss = true
 
-				if earlyExit{
+				if earlyExit {
 					aborted = true
 					break
 				}
 			}
 		}
 		if aborted {
-			fmt.Println("---> Aborted")
+			logger.Info("---> Aborted!")
 			break
 		}
 
@@ -89,13 +89,11 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 	}
 
 	dag.MakeDot("out")
-	
 
 }
 
 func exploreState(state *State) bool {
 	var foundJob bool = false
-	
 
 	ts_min := state.Availibility.From()
 	rel_min := state.EarliestPendingRelease
@@ -109,7 +107,7 @@ func exploreState(state *State) bool {
 	logger.Debug("Next range: ", nextRange.String())
 
 	// Iterate over all incomplete jobs that are released no later than nextRange.End
-	for _,jt := range jobsByEarliestArrival {
+	for _, jt := range jobsByEarliestArrival {
 		if jt.Arrival.Start < state.EarliestPendingRelease {
 			continue
 		}
@@ -137,35 +135,39 @@ func initialize() {
 
 	// make root state
 	s0 := NewState(statesIndex, Interval{Start: 0, End: 0}, JobSet{}, Time(0))
-	v1, _ :=dag.AddVertex(s0.GetName())
-	s0.ID=v1
-	states.AddState(s0)
-	
-	statesIndex++
 
+	v1, _ := dag.AddVertex(s0.GetName(), s0.GetLabel())
+	s0.ID = v1
+	states.AddState(s0)
+
+	statesIndex++
 
 }
 
 func makeState(finishTime Interval, j JobSet, earliestReleasePending Time,
 	parentState *State, dispatchedJob Job) {
 	s := NewState(statesIndex, finishTime, j, earliestReleasePending)
-	newStateID,_:=dag.AddVertex(s.GetName())
-	s.ID=newStateID
+	newStateID, _ := dag.AddVertex(s.GetName(), s.GetLabel())
+	s.ID = newStateID
 	states.AddState(s)
-	dag.AddEdge(parentState.GetID(), newStateID, dispatchedJob.Name)
-	
+
+	edgeLabel := dispatchedJob.Name + "\\nDL=" + fmt.Sprint(dispatchedJob.Deadline) 
+	edgeLabel += "\\nES=" + fmt.Sprint(finishTime.Start-dispatchedJob.Cost.Start) + "\\nLS=" + fmt.Sprint(finishTime.End-dispatchedJob.Cost.End)
+	edgeLabel += "\\nEF="+fmt.Sprint(finishTime.Start) +"\\nLF="+fmt.Sprint(finishTime.End)
+	dag.AddEdge(parentState.GetID(), newStateID, edgeLabel)
+
 	statesIndex++
 	logger.Debug("Make state: ", s.GetName())
-	logger.Debug("Availibility: ",s.Availibility.String())
-	logger.Debug("Earliest pending release: ",s.EarliestPendingRelease)
-	logger.Debug("Scheduled jobs: ",s.ScheduledJobs.AbstractString())
+	logger.Debug("Availibility: ", s.Availibility.String())
+	logger.Debug("Earliest pending release: ", s.EarliestPendingRelease)
+	logger.Debug("Scheduled jobs: ", s.ScheduledJobs.AbstractString())
 	logger.Debug("----------------------------------------")
 }
 
 func giveFrontStates() []*State {
 	leaves := dag.GetLeaves()
 	var frontStates []*State
-	for _,leaf := range leaves {
+	for _, leaf := range leaves {
 		state := states.GetState(fmt.Sprint(leaf))
 		// fmt.Println(state.String())
 		frontStates = append(frontStates, state)
@@ -407,13 +409,17 @@ func nextLatestFinishTime(s *State, j Job) Time {
 
 	// t_s'
 	// t_L
-	ownLatestStart := math.Max(float64(nextEligibleJobReady(s)), float64(s.Availibility.Until()))
+	ownLatestStart := Maximum(nextEligibleJobReady(s), s.Availibility.Until())
+
+	logger.Debug("own latest start: ", ownLatestStart)
 
 	// t_R, t_I
 	// TODO: add iip_latest_start later
 	lastStartBeforeOther := otherCertainStart - Epsilon()
 
-	latestFinishTime := Time(math.Min(float64(ownLatestStart), float64(lastStartBeforeOther)))
+	logger.Debug("last start before other: ", lastStartBeforeOther)
+
+	latestFinishTime := Minimum(ownLatestStart, lastStartBeforeOther)
 
 	return latestFinishTime + j.Cost.Max()
 
@@ -438,7 +444,8 @@ func nextCertainHigherPriorityJobRelease(s *State, j Job) Time {
 		}
 
 		// great, this job fits the bill
-		return j.Arrival.End
+		
+		return jt.Arrival.Max()
 
 	}
 	return Infinity()

@@ -2,6 +2,7 @@ package lib
 
 import (
 	"strconv"
+	"fmt"
 )
 
 type State struct {
@@ -36,6 +37,17 @@ func (s State) GetID() string {
 
 func (s State) String() string {
 	return s.GetName() + "\n" + s.Availibility.String() + "\n{" + s.ScheduledJobs.AbstractString() + "}\n" + s.EarliestPendingRelease.String()
+}
+
+func (s State) GetLabel() string {
+	var t string
+	if (s.EarliestPendingRelease == Infinity()) {
+		t="\"" + s.GetName() + ":" + fmt.Sprintf("I[%.3f,%.3f]",s.Availibility.Start,s.Availibility.End) + "\\nER=" + "Inf" + "\""
+	} else{
+		t="\"" + s.GetName() + ":" + fmt.Sprintf("I[%.3f,%.3f]",s.Availibility.Start,s.Availibility.End) + "\\nER=" + fmt.Sprintf("%.3f",s.EarliestPendingRelease) + "\""
+	}
+	
+	return t
 }
 
 // functions for state storage
