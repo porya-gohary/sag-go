@@ -86,7 +86,7 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 			}
 		}
 		if aborted {
-			logger.Info("---> Aborted!")
+			logger.Warning("---> Aborted!")
 			break
 		}
 
@@ -154,11 +154,6 @@ func initialize() {
 func makeState(finishTime Interval, jobs JobSet, earliestReleasePending Time,
 	parentState *State, dispatchedJob Job) {
 
-	logger.Debug("+++++++++++++++++++++++++++++++++++++++++")
-	logger.Debug("States: ", states)
-
-	logger.Debug("+++++++++++++++++++++++++++++++++++++++++")
-
 	s := NewState(statesIndex, finishTime, jobs, earliestReleasePending)
 	newStateID, _ := dag.AddVertex(s.GetName(), s.GetLabel())
 	s.ID = newStateID
@@ -176,10 +171,6 @@ func makeState(finishTime Interval, jobs JobSet, earliestReleasePending Time,
 	logger.Debug("Earliest pending release: ", s.EarliestPendingRelease)
 	logger.Debug("Scheduled jobs: ", s.ScheduledJobs.AbstractString())
 	logger.Debug("----------------------------------------")
-
-	logger.Debug("States: ", states)
-
-	logger.Debug("+++++++++++++++++++++++++++++++++++++++++")
 }
 
 func getFrontStates() []*State {
@@ -545,10 +536,10 @@ func updateFinishTimes(j Job, finishTime Interval) {
 }
 
 func PrintResponseTimes() {
-	logger.Info("Response times:")
-	logger.Info("Name: I[BCCT,WCCT]")
+	fmt.Println("Response times:")
+	fmt.Println("Name: I[BCCT,WCCT]")
 
 	for _, j := range workload {
-		logger.Info(j.Name, ": ", rta[j.Name].String())
+		fmt.Println(j.Name, ": ", rta[j.Name].String())
 	}
 }
