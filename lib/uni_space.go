@@ -67,14 +67,10 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 	jobsByDeadline.SortByDeadline()
 	jobsByPriority.SortByPriority()
 
-	fmt.Println("Jobs by Earliest Arrival:")
-	fmt.Println(jobsByEarliestArrival.AbstractString())
-
 	initialize()
 
 	for currentJobCount < len(workload) {
 		frontStates := getFrontStates()
-		fmt.Println("Front states: ", frontStates)
 		for _, s := range frontStates {
 			logger.Debug("==========================================")
 			logger.Debug("Looking at: ", s.GetName())
@@ -225,7 +221,6 @@ func nextEligibleJobReady(state *State) Time {
 }
 
 func isDispatched(jobs JobSet, job Job) bool {
-	fmt.Println("Dispatched: ", jobs.AbstractString())
 	for _, j := range jobs {
 		if j.Name == job.Name {
 			return true
@@ -246,23 +241,23 @@ func certainlyReleasedHigherPriorityExists(s *State, j Job, at Time) bool {
 
 		logger.Debug("        - considering ", jt.Name)
 		if jt.GetEarliestArrival() < s.EarliestPendingRelease {
-			fmt.Println("        - 1")
+			//fmt.Println("        - 1")
 			continue
 		}
 
 		if jt.GetLatestArrival() > at {
-			fmt.Println("        - 2")
+			//fmt.Println("        - 2")
 			break
 		}
 
 		if isDispatched(s.ScheduledJobs, *jt) {
-			fmt.Println("        - 3")
+			//fmt.Println("        - 3")
 			continue
 		}
 
 		// skip reference job
 		if jt.SameJob(j) {
-			fmt.Println("        - 4")
+			//fmt.Println("        - 4")
 			continue
 		}
 
@@ -413,9 +408,6 @@ func schedule(parentState *State, j Job) {
 	finishRange := nextFinishTimes(parentState, j)
 
 	alreadyScheduled = append(alreadyScheduled, &j)
-
-	fmt.Println("already Scheduled ", alreadyScheduled)
-	fmt.Println("Parent state jobs ", parentState.ScheduledJobs)
 
 	logger.Debug("Dispatch job: ", j.Name)
 
