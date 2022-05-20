@@ -1,14 +1,11 @@
 package lib
 
-import (
-	
-)
+import ()
 
 type Interval struct {
 	Start Time
-	End Time
+	End   Time
 }
-
 
 func (i Interval) Intersects(j Interval) bool {
 	return i.Start <= j.End && j.Start <= i.End
@@ -46,3 +43,6 @@ func (i Interval) String() string {
 	return "I[" + i.Start.String() + "," + i.End.String() + "]"
 }
 
+func (i Interval) widen(other Interval) Interval {
+	return Interval{Start: Minimum(i.Start, other.Start), End: Maximum(i.End, other.End)}
+}

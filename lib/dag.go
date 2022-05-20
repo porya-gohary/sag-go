@@ -4,9 +4,9 @@ package lib
 import (
 	"fmt"
 	"github.com/google/uuid"
-	"sync"
 	"log"
 	"os"
+	"sync"
 )
 
 // IDInterface describes the interface a type must implement in order to
@@ -20,13 +20,13 @@ type IDInterface interface {
 
 // DAG implements the data structure of the DAG.
 type DAG struct {
-	muDAG            sync.RWMutex
-	vertices         map[interface{}]string
-	vertexIds        map[string]interface{}
-	vertexLabel		 map[string]string
-	inboundEdge      map[interface{}]map[interface{}]string
+	muDAG       sync.RWMutex
+	vertices    map[interface{}]string
+	vertexIds   map[string]interface{}
+	vertexLabel map[string]string
+	inboundEdge map[interface{}]map[interface{}]string
 	// inboundEdge      map[interface{}]map[interface{}]struct{}
-	outboundEdge     map[interface{}]map[interface{}]string
+	outboundEdge map[interface{}]map[interface{}]string
 	// outboundEdge     map[interface{}]map[interface{}]struct{}
 	muCache          sync.RWMutex
 	verticesLocked   *dMutex
@@ -51,7 +51,7 @@ func NewDAG() *DAG {
 // AddVertex adds the vertex v to the DAG. AddVertex returns an error, if v is
 // nil, v is already part of the graph, or the id of v is already part of the
 // graph.
-func (d *DAG) AddVertex(v interface{},label string) (string, error) {
+func (d *DAG) AddVertex(v interface{}, label string) (string, error) {
 
 	d.muDAG.Lock()
 	defer d.muDAG.Unlock()
@@ -64,10 +64,10 @@ func (d *DAG) AddVertex(v interface{},label string) (string, error) {
 		return "", VertexDuplicateError{v}
 	}
 
-	return d.addVertex(v,label)
+	return d.addVertex(v, label)
 }
 
-func (d *DAG) addVertex(v interface{},label string) (string, error) {
+func (d *DAG) addVertex(v interface{}, label string) (string, error) {
 
 	var id string
 	if i, ok := v.(IDInterface); ok {
@@ -161,7 +161,7 @@ func (d *DAG) DeleteVertex(id string) error {
 // AddEdge adds an edge between srcID and dstID. AddEdge returns an
 // error, if srcID or dstID are empty strings or unknown, if the edge
 // already exists, or if the new edge would create a loop.
-func (d *DAG) AddEdge(srcID, dstID string,label string) error {
+func (d *DAG) AddEdge(srcID, dstID string, label string) error {
 
 	d.muDAG.Lock()
 	defer d.muDAG.Unlock()
@@ -268,7 +268,7 @@ func (d *DAG) GetEdgeLable(srcID, dstID string) (string, error) {
 
 	if exists, err := d.IsEdge(srcID, dstID); exists {
 		return d.getEdgeLable(d.vertexIds[srcID], d.vertexIds[dstID]), nil
-	}else {
+	} else {
 		return "", err
 	}
 
@@ -293,6 +293,18 @@ func (d *DAG) GetVertexLabel(id string) (string, error) {
 
 func (d *DAG) getVertexLabel(id string) string {
 	return d.vertexLabel[id]
+}
+
+func (d *DAG) UpdateVertexLabel(id, label string) error {
+	d.muDAG.Lock()
+	defer d.muDAG.Unlock()
+
+	if err := d.saneID(id); err != nil {
+		return err
+	}
+
+	d.vertexLabel[id] = label
+	return nil
 }
 
 // DeleteEdge deletes the edge between srcID and dstID. DeleteEdge
@@ -851,8 +863,7 @@ func copyMap(in map[interface{}]struct{}) map[interface{}]struct{} {
 	return out
 }
 
-
-func (d *DAG)MakeDot (fileName string) {
+func (d *DAG) MakeDot(fileName string) {
 	dotOut := "digraph {\n"
 	dotOut += "\tgraph [fontname=Ubuntu];\n"
 	dotOut += "\tnode [fontname=Ubuntu];\n"
@@ -867,14 +878,14 @@ func (d *DAG)MakeDot (fileName string) {
 
 		for vertex := range x {
 			child, _ := d.GetVertex(vertex)
-			label,_ :=d.GetEdgeLable(key, vertex)
+			label, _ := d.GetEdgeLable(key, vertex)
 			dotOut += fmt.Sprintf("\t%v -> %v", v, child)
-			dotOut += fmt.Sprintf("[label=\"%v\",color=Red,fontcolor=Red];\n",label)
+			dotOut += fmt.Sprintf("[label=\"%v\",color=Red,fontcolor=Red];\n", label)
 		}
 	}
 	dotOut += "}"
 
-	f, err := os.Create(fileName+".dot")
+	f, err := os.Create(fileName + ".dot")
 
 	if err != nil {
 		log.Fatal(err)
@@ -888,7 +899,7 @@ func (d *DAG)MakeDot (fileName string) {
 		log.Fatal(err2)
 	}
 
-	fmt.Println("Done!")
+	logger.Debug("Dot file created successfully!")
 
 }
 

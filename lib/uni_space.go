@@ -3,7 +3,6 @@ package lib
 import (
 	"fmt"
 	"github.com/lfkeitel/verbose"
-	"math"
 	"time"
 )
 
@@ -23,6 +22,7 @@ var jobsByEarliestArrival JobSet
 var jobsByLatestArrival JobSet
 var jobsByDeadline JobSet
 var jobsByPriority JobSet
+var workload JobSet
 
 // response times
 var rta resposeTimes
@@ -32,16 +32,21 @@ var deadlineMiss bool = false
 
 var logger *verbose.Logger
 
-func ExploreNaively(workload JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verbose.Logger) {
+func ExploreNaively(w JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verbose.Logger) {
 	beNaive = true
-	startTime = time.Now()
 	logger = v
+	startTime = time.Now()
+	rta = make(resposeTimes)
+	workload = w
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
 }
 
-func Explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
+func Explore(w JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verbose.Logger) {
+	logger = v
 	startTime = time.Now()
+	rta = make(resposeTimes)
+	workload = w
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
 }
@@ -62,15 +67,19 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 	jobsByDeadline.SortByDeadline()
 	jobsByPriority.SortByPriority()
 
+	fmt.Println("Jobs by Earliest Arrival:")
+	fmt.Println(jobsByEarliestArrival.AbstractString())
+
 	initialize()
 
 	for currentJobCount < len(workload) {
-		frontStates := giveFrontStates()
-		for _, state := range frontStates {
+		frontStates := getFrontStates()
+		fmt.Println("Front states: ", frontStates)
+		for _, s := range frontStates {
 			logger.Debug("==========================================")
-			logger.Debug("Looking at: ", state.GetName())
-			foundJob := exploreState(state)
-			if !foundJob && len(state.ScheduledJobs) != len(workload) {
+			logger.Debug("Looking at: ", s.GetName())
+			foundJob := exploreState(s)
+			if !foundJob && len(s.ScheduledJobs) != len(workload) {
 				// out of options and we didn't schedule all jobs
 				deadlineMiss = true
 
@@ -92,14 +101,14 @@ func explore(workload JobSet, timeout uint, earlyExit bool, maxDepth uint) {
 
 }
 
-func exploreState(state *State) bool {
+func exploreState(s *State) bool {
 	var foundJob bool = false
 
-	ts_min := state.Availibility.From()
-	rel_min := state.EarliestPendingRelease
-	t_l := math.Max(float64(nextEligibleJobReady(state)), float64(state.Availibility.Until()))
+	ts_min := s.Availability.From()
+	rel_min := s.EarliestPendingRelease
+	t_l := Maximum(nextEligibleJobReady(s), s.Availability.Until())
 
-	nextRange := Interval{Start: Time(math.Min(float64(ts_min), float64(rel_min))), End: Time(t_l)}
+	nextRange := Interval{Start: Minimum(ts_min, rel_min), End: t_l}
 
 	logger.Debug("ts_min: ", ts_min)
 	logger.Debug("rel_min: ", rel_min)
@@ -108,20 +117,22 @@ func exploreState(state *State) bool {
 
 	// Iterate over all incomplete jobs that are released no later than nextRange.End
 	for _, jt := range jobsByEarliestArrival {
-		if jt.Arrival.Start < state.EarliestPendingRelease {
+		if jt.Arrival.Start < s.EarliestPendingRelease {
 			continue
 		}
 
-		if isDispatched(state.ScheduledJobs, jt) {
+		if isDispatched(s.ScheduledJobs, *jt) {
 			continue
 		}
 
-		if jt.Arrival.Start > nextRange.End {
+		if jt.GetEarliestArrival() > nextRange.Until() {
 			break
 		}
 
-		if isEligibleSuccessor(state, jt) {
-			schedule(state, jt)
+		logger.Debug("+ ", jt.Name)
+		if isEligibleSuccessor(s, *jt) {
+			logger.Debug("  --> can be next ")
+			schedule(s, *jt)
 			foundJob = true
 		}
 	}
@@ -144,33 +155,45 @@ func initialize() {
 
 }
 
-func makeState(finishTime Interval, j JobSet, earliestReleasePending Time,
+func makeState(finishTime Interval, jobs JobSet, earliestReleasePending Time,
 	parentState *State, dispatchedJob Job) {
-	s := NewState(statesIndex, finishTime, j, earliestReleasePending)
+
+	logger.Debug("+++++++++++++++++++++++++++++++++++++++++")
+	logger.Debug("States: ", states)
+
+	logger.Debug("+++++++++++++++++++++++++++++++++++++++++")
+
+	s := NewState(statesIndex, finishTime, jobs, earliestReleasePending)
 	newStateID, _ := dag.AddVertex(s.GetName(), s.GetLabel())
 	s.ID = newStateID
+
 	states.AddState(s)
 
-	edgeLabel := dispatchedJob.Name + "\\nDL=" + fmt.Sprint(dispatchedJob.Deadline) 
+	edgeLabel := dispatchedJob.Name + "\\nDL=" + fmt.Sprint(dispatchedJob.Deadline)
 	edgeLabel += "\\nES=" + fmt.Sprint(finishTime.Start-dispatchedJob.Cost.Start) + "\\nLS=" + fmt.Sprint(finishTime.End-dispatchedJob.Cost.End)
-	edgeLabel += "\\nEF="+fmt.Sprint(finishTime.Start) +"\\nLF="+fmt.Sprint(finishTime.End)
+	edgeLabel += "\\nEF=" + fmt.Sprint(finishTime.Start) + "\\nLF=" + fmt.Sprint(finishTime.End)
 	dag.AddEdge(parentState.GetID(), newStateID, edgeLabel)
-
 	statesIndex++
+
 	logger.Debug("Make state: ", s.GetName())
-	logger.Debug("Availibility: ", s.Availibility.String())
+	logger.Debug("Availability: ", s.Availability.String())
 	logger.Debug("Earliest pending release: ", s.EarliestPendingRelease)
 	logger.Debug("Scheduled jobs: ", s.ScheduledJobs.AbstractString())
 	logger.Debug("----------------------------------------")
+
+	logger.Debug("States: ", states)
+
+	logger.Debug("+++++++++++++++++++++++++++++++++++++++++")
 }
 
-func giveFrontStates() []*State {
+func getFrontStates() []*State {
 	leaves := dag.GetLeaves()
 	var frontStates []*State
 	for _, leaf := range leaves {
-		state := states.GetState(fmt.Sprint(leaf))
+		s := states.GetState(fmt.Sprint(leaf))
 		// fmt.Println(state.String())
-		frontStates = append(frontStates, state)
+		frontStates = append(frontStates, s)
+
 	}
 	return frontStates
 }
@@ -178,22 +201,22 @@ func giveFrontStates() []*State {
 func nextEligibleJobReady(state *State) Time {
 
 	alreadyScheduled := state.ScheduledJobs
-	for _, j := range jobsByLatestArrival {
+	for _, jt := range jobsByLatestArrival {
 
 		// not relevant if already scheduled
-		if isDispatched(alreadyScheduled, j) {
+		if isDispatched(alreadyScheduled, *jt) {
 			continue
 		}
 
-		t := math.Max(float64(j.Arrival.Until()), float64(state.Availibility.Until()))
+		t := Maximum(jt.GetLatestArrival(), state.Availability.Until())
 
 		// TODO: implement later
 		// if (iip_eligible(s, j, t)){
 		// 	continue
 		// }
 
-		if priorityEligible(state, j, Time(t)) {
-			return j.Arrival.Until()
+		if priorityEligible(state, *jt, t) {
+			return jt.GetLatestArrival()
 		}
 
 	}
@@ -202,6 +225,7 @@ func nextEligibleJobReady(state *State) Time {
 }
 
 func isDispatched(jobs JobSet, job Job) bool {
+	fmt.Println("Dispatched: ", jobs.AbstractString())
 	for _, j := range jobs {
 		if j.Name == job.Name {
 			return true
@@ -210,26 +234,35 @@ func isDispatched(jobs JobSet, job Job) bool {
 	return false
 }
 
-func priorityEligible(state *State, j Job, at Time) bool {
-	return !certainlyReleasedHigherPriorityExists(state, j, at)
+func priorityEligible(s *State, j Job, at Time) bool {
+	return !certainlyReleasedHigherPriorityExists(s, j, at)
 }
 
-func certainlyReleasedHigherPriorityExists(state *State, j Job, at Time) bool {
-	// ts_min := state.Availibility.From()
+func certainlyReleasedHigherPriorityExists(s *State, j Job, at Time) bool {
+	// ts_min := state.Availability.From()
 	// rel_min := state.EarliestPendingRelease
-
 	for _, jt := range jobsByLatestArrival {
 		// Iterare over all incomplete jobs that are certainly released no later than "at"
-		if jt.Arrival.Until() > at {
+
+		logger.Debug("        - considering ", jt.Name)
+		if jt.GetEarliestArrival() < s.EarliestPendingRelease {
+			fmt.Println("        - 1")
+			continue
+		}
+
+		if jt.GetLatestArrival() > at {
+			fmt.Println("        - 2")
 			break
 		}
 
-		if isDispatched(state.ScheduledJobs, jt) {
+		if isDispatched(s.ScheduledJobs, *jt) {
+			fmt.Println("        - 3")
 			continue
 		}
 
 		// skip reference job
-		if jt.Name == j.Name {
+		if jt.SameJob(j) {
+			fmt.Println("        - 4")
 			continue
 		}
 
@@ -250,24 +283,24 @@ func certainlyReleasedHigherPriorityExists(state *State, j Job, at Time) bool {
 
 }
 
-func schedule_eligible_successors(s *State, nextRange Interval) bool {
-	for _, j := range jobsByEarliestArrival {
+func scheduleEligibleSuccessors(s *State, nextRange Interval) bool {
+	for _, jt := range jobsByEarliestArrival {
 
-		if j.Arrival.Start < s.EarliestPendingRelease {
+		if jt.GetEarliestArrival() < s.EarliestPendingRelease {
 			continue
 		}
 
-		if j.Arrival.Start > nextRange.End {
-			break
-		}
-
-		if isDispatched(s.ScheduledJobs, j) {
+		if jt.GetEarliestArrival() > nextRange.End {
 			continue
 		}
 
-		if isEligibleSuccessor(s, j) {
+		if isDispatched(s.ScheduledJobs, *jt) {
+			continue
+		}
 
-			schedule(s, j)
+		if isEligibleSuccessor(s, *jt) {
+
+			schedule(s, *jt)
 
 			return true
 		}
@@ -312,23 +345,23 @@ func isEligibleSuccessor(s *State, j Job) bool {
 
 func nextEarliestStartTime(s *State, j Job) Time {
 	// t_S in paper, see definition 6.
-	return Time(math.Max(float64(j.Arrival.Start), float64(s.Availibility.From())))
+	return Maximum(s.Availability.From(), j.GetEarliestArrival())
 }
 
 func potentiallyNext(s *State, j Job) bool {
-	t_latest := s.Availibility.Until()
+	t_latest := s.Availability.Until()
 
 	// if t_latest >=  j.earliest_arrival(), then the
 	// job is trivially potentially next, so check the other case.
 
-	if t_latest < j.Arrival.Start {
+	if t_latest < j.Arrival.Min() {
 		r := nextCertainJobRelease(s)
 
 		// if something else is certainly released before j and IIP-
 		// eligible at the time of certain release, then j can't
 		// possibly be next
 
-		if r < j.Arrival.Start {
+		if r < j.Arrival.Min() {
 			return false
 		}
 
@@ -339,14 +372,14 @@ func potentiallyNext(s *State, j Job) bool {
 func nextCertainJobRelease(s *State) Time {
 	alreadyScheduled := s.ScheduledJobs
 
-	for _, j := range jobsByEarliestArrival {
+	for _, jt := range jobsByLatestArrival {
 
-		if j.Arrival.Start < s.Availibility.Start {
+		if jt.GetLatestArrival() < s.Availability.Min() {
 			continue
 		}
 
 		// not relevant if already scheduled
-		if isDispatched(alreadyScheduled, j) {
+		if isDispatched(alreadyScheduled, *jt) {
 			continue
 		}
 
@@ -367,23 +400,34 @@ func nextCertainJobRelease(s *State) Time {
 		// 	continue;
 
 		// great, this job fits the bill
-		return j.Arrival.End
+		return jt.Arrival.End
 
 	}
 	return Infinity()
 
 }
 
-func schedule(s *State, j Job) {
-	finishRange := nextFinishTimes(s, j)
+func schedule(parentState *State, j Job) {
+	alreadyScheduled := make(JobSet, len(parentState.ScheduledJobs))
+	copy(alreadyScheduled, parentState.ScheduledJobs)
+	finishRange := nextFinishTimes(parentState, j)
 
-	scheduledJobs := append(s.ScheduledJobs, j)
+	alreadyScheduled = append(alreadyScheduled, &j)
+
+	fmt.Println("already Scheduled ", alreadyScheduled)
+	fmt.Println("Parent state jobs ", parentState.ScheduledJobs)
 
 	logger.Debug("Dispatch job: ", j.Name)
 
 	if beNaive {
-		makeState(finishRange, scheduledJobs, earliestPossibleJobRelease(s, j), s, j)
+		makeState(finishRange, alreadyScheduled, earliestPossibleJobRelease(parentState, j), parentState, j)
+	} else {
+		if !tryToMerge(finishRange, alreadyScheduled, earliestPossibleJobRelease(parentState, j), parentState, j) {
+			makeState(finishRange, alreadyScheduled, earliestPossibleJobRelease(parentState, j), parentState, j)
+		}
 	}
+
+	updateFinishTimes(j, finishRange)
 
 }
 
@@ -409,7 +453,7 @@ func nextLatestFinishTime(s *State, j Job) Time {
 
 	// t_s'
 	// t_L
-	ownLatestStart := Maximum(nextEligibleJobReady(s), s.Availibility.Until())
+	ownLatestStart := Maximum(nextEligibleJobReady(s), s.Availability.Until())
 
 	logger.Debug("own latest start: ", ownLatestStart)
 
@@ -430,12 +474,12 @@ func nextCertainHigherPriorityJobRelease(s *State, j Job) Time {
 
 	for _, jt := range jobsByLatestArrival {
 
-		if jt.Arrival.End < s.Availibility.Start {
+		if jt.Arrival.End < s.Availability.Start {
 			continue
 		}
 
 		// not relevant if already scheduled
-		if isDispatched(alreadyScheduled, jt) {
+		if isDispatched(alreadyScheduled, *jt) {
 			continue
 		}
 
@@ -444,7 +488,7 @@ func nextCertainHigherPriorityJobRelease(s *State, j Job) Time {
 		}
 
 		// great, this job fits the bill
-		
+
 		return jt.Arrival.Max()
 
 	}
@@ -460,18 +504,59 @@ func earliestPossibleJobRelease(s *State, j Job) Time {
 		}
 
 		// skip if it is already dispatched
-		if isDispatched(s.ScheduledJobs, jt) {
+		if isDispatched(s.ScheduledJobs, *jt) {
 			continue
 		}
 
 		// skip if it is the one we're ignoring
-		if j.SameJob(jt) {
+		if j.SameJob(*jt) {
 			continue
 		}
 
 		// it's incomplete and not ignored => found the earliest
-		return jt.Arrival.Start
+		return jt.Arrival.Min()
 
 	}
 	return Infinity()
+}
+
+func tryToMerge(finishTime Interval, j JobSet, earliestReleasePending Time,
+	parentState *State, dispatchedJob Job) bool {
+	newState := NewState(statesIndex, finishTime, j, earliestReleasePending)
+	tempStates := states.getStatesWithSameJobs(j)
+	edgeLabel := dispatchedJob.Name + "\\nDL=" + fmt.Sprint(dispatchedJob.Deadline)
+	edgeLabel += "\\nES=" + fmt.Sprint(finishTime.Start-dispatchedJob.Cost.Start) + "\\nLS=" + fmt.Sprint(finishTime.End-dispatchedJob.Cost.End)
+	edgeLabel += "\\nEF=" + fmt.Sprint(finishTime.Start) + "\\nLF=" + fmt.Sprint(finishTime.End)
+
+	for _, s := range tempStates {
+		if s.IsMergePossible(newState) {
+			s.Merge(newState)
+			dag.UpdateVertexLabel(s.GetID(), s.GetLabel())
+			dag.AddEdge(parentState.GetID(), s.GetID(), edgeLabel)
+			return true
+
+		}
+
+	}
+	return false
+
+}
+
+func updateFinishTimes(j Job, finishTime Interval) {
+	// update the finish time of the job
+
+	if _, ok := rta[j.Name]; ok {
+		rta[j.Name] = rta[j.Name].widen(finishTime)
+	} else {
+		rta[j.Name] = finishTime
+	}
+}
+
+func PrintResponseTimes() {
+	logger.Info("Response times:")
+	logger.Info("Name: I[BCCT,WCCT]")
+
+	for _, j := range workload {
+		logger.Info(j.Name, ": ", rta[j.Name].String())
+	}
 }
