@@ -1,4 +1,4 @@
-package lib
+package comm
 
 import (
 	"sort"
@@ -20,7 +20,7 @@ func (j Job) String() string {
 	return j.Name + "\t" + j.Arrival.String() + "\t" + j.Cost.String() + "\t" + j.Deadline.String() + "\t" + j.Priority.String()
 }
 
-func (j Job) higherPriorityThan(other Job) bool {
+func (j Job) HigherPriorityThan(other Job) bool {
 
 	if j.Priority < other.Priority {
 		return true

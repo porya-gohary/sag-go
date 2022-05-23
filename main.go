@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"github.com/lfkeitel/verbose"
-	"go-test/lib"
+	"go-test/lib/comm"
+	"go-test/lib/uni"
 	"os"
 	"time"
 )
@@ -59,15 +60,15 @@ Options:
 	logger.AddHandler("123", sh)
 
 	//read job set
-	workload := lib.ReadJobSet(inputFile, logger)
+	workload := comm.ReadJobSet(inputFile, logger)
 
 	if beNaive {
-		lib.ExploreNaively(workload, 10, true, 10, logger)
+		uni.ExploreNaively(workload, 10, true, 10, logger)
 	} else {
-		lib.Explore(workload, 10, true, 10, logger)
+		uni.Explore(workload, 10, true, 10, logger)
 	}
 
-	lib.PrintResponseTimes()
+	uni.PrintResponseTimes()
 
 	fmt.Println("Naive exploration finished")
 	fmt.Println("Time elapsed: ", time.Since(start))

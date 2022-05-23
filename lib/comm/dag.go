@@ -1,5 +1,5 @@
 // Package dag implements directed acyclic graphs (DAGs).
-package lib
+package comm
 
 import (
 	"fmt"
@@ -898,8 +898,6 @@ func (d *DAG) MakeDot(fileName string) {
 	if err2 != nil {
 		log.Fatal(err2)
 	}
-
-	logger.Debug("Dot file created successfully!")
 
 }
 

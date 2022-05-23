@@ -1,16 +1,21 @@
-package lib
+package comm
 
-import(
+import (
 	"fmt"
 	"math"
 )
 
+type DiscreteTime int32
 
+type DenseTime float32
+
+//type Time interface {
+//
+//}
 type Time float32
 
-
 func (t Time) String() string {
-	return fmt.Sprintf("%f",float32(t))
+	return fmt.Sprintf("%f", float32(t))
 }
 
 func Infinity() Time {
@@ -20,7 +25,6 @@ func Infinity() Time {
 func Epsilon() Time {
 	return Time(math.SmallestNonzeroFloat32)
 }
-
 
 func Maximum(t1, t2 Time) Time {
 	if t1 > t2 {

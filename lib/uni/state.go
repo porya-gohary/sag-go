@@ -1,21 +1,22 @@
-package lib
+package uni
 
 import (
 	"fmt"
+	"go-test/lib/comm"
 )
 
 type State struct {
 	Index                  uint
-	Availability           Interval
-	ScheduledJobs          JobSet
-	EarliestPendingRelease Time
+	Availability           comm.Interval
+	ScheduledJobs          comm.JobSet
+	EarliestPendingRelease comm.Time
 	ID                     string
 }
 
 type StateStorage map[string]*State
 
 // functions for state
-func NewState(index uint, finishTime Interval, j JobSet, earliestRelease Time) *State {
+func NewState(index uint, finishTime comm.Interval, j comm.JobSet, earliestRelease comm.Time) *State {
 
 	return &State{
 		Index:                  index,
@@ -39,7 +40,7 @@ func (s State) String() string {
 
 func (s State) GetLabel() string {
 	var t string
-	if s.EarliestPendingRelease == Infinity() {
+	if s.EarliestPendingRelease == comm.Infinity() {
 		t = "\"" + s.GetName() + ":" + fmt.Sprintf("I[%.3f,%.3f]", s.Availability.Start, s.Availability.End) + "\\nER=" + "Inf" + "\""
 	} else {
 		t = "\"" + s.GetName() + ":" + fmt.Sprintf("I[%.3f,%.3f]", s.Availability.Start, s.Availability.End) + "\\nER=" + fmt.Sprintf("%.3f", s.EarliestPendingRelease) + "\""
@@ -59,7 +60,7 @@ func (s State) IsMergePossible(other *State) bool {
 }
 
 func (s *State) Merge(other *State) {
-	(*s).Availability = s.Availability.widen(other.Availability)
+	(*s).Availability = s.Availability.Widen(other.Availability)
 
 }
 
@@ -91,7 +92,7 @@ func (s *StateStorage) String() string {
 
 }
 
-func (s StateStorage) getStatesWithSameJobs(jobs JobSet) []*State {
+func (s StateStorage) getStatesWithSameJobs(jobs comm.JobSet) []*State {
 	var partialStates []*State
 	for _, state := range s {
 		if state.ScheduledJobs.Compare(jobs) {
