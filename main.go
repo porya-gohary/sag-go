@@ -5,7 +5,7 @@ import (
 	"github.com/docopt/docopt-go"
 	"github.com/lfkeitel/verbose"
 	"go-test/lib/comm"
-	"go-test/lib/uni"
+	"go-test/lib/uni-non-preemptive"
 	"os"
 	"time"
 )
@@ -37,7 +37,7 @@ Options:
 
 	start := time.Now()
 
-	logger := verbose.New("NP::uni")
+	logger := verbose.New("NP::uni-non-preemptive")
 	sh := verbose.NewStdoutHandler(true)
 	//Set verbose level
 	if verboseLevel == 0 {
@@ -63,12 +63,12 @@ Options:
 	workload := comm.ReadJobSet(inputFile, logger)
 
 	if beNaive {
-		uni.ExploreNaively(workload, 10, true, 10, logger)
+		uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
 	} else {
-		uni.Explore(workload, 10, true, 10, logger)
+		uni_non_preemptive.Explore(workload, 10, true, 10, logger)
 	}
 
-	uni.PrintResponseTimes()
+	uni_non_preemptive.PrintResponseTimes()
 
 	fmt.Println("Naive exploration finished")
 	fmt.Println("Time elapsed: ", time.Since(start))

@@ -1,7 +1,9 @@
 package comm
 
 import (
+	"fmt"
 	"sort"
+	"sync"
 )
 
 type Job struct {
@@ -15,6 +17,11 @@ type Job struct {
 }
 
 type JobSet []*Job
+
+type JobQueue struct {
+	queue []*Job
+	lock  sync.RWMutex
+}
 
 func (j Job) String() string {
 	return j.Name + "\t" + j.Arrival.String() + "\t" + j.Cost.String() + "\t" + j.Deadline.String() + "\t" + j.Priority.String()
@@ -59,6 +66,10 @@ func (j Job) GetEarliestArrival() Time {
 
 func (j Job) GetLatestArrival() Time {
 	return j.Arrival.Until()
+}
+
+func (j Job) PriorityExceeds(otherPriority Time) bool {
+	return j.Priority < otherPriority
 }
 
 ////////////////////////////////
@@ -110,6 +121,13 @@ func (S JobSet) SortByPriority() JobSet {
 	return S
 }
 
+func (S JobSet) SortByWCET() JobSet {
+	sort.Slice(S, func(i, j int) bool {
+		return S[i].GetMaximalCost() < S[j].GetMaximalCost()
+	})
+	return S
+}
+
 func (S JobSet) RemoveByIndex(index int) JobSet {
 	return append(S[:index], S[index+1:]...)
 }
@@ -141,4 +159,49 @@ func (S JobSet) Compare(other JobSet) bool {
 		}
 	}
 	return true
+}
+
+func (S JobSet) Contains(job Job) bool {
+	for _, j := range S {
+		if j.Name == job.Name {
+			return true
+		}
+	}
+	return false
+}
+
+////////////////////////////////
+// Functions for job queue
+
+func (c *JobQueue) Enqueue(j *Job) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.queue = append(c.queue, j)
+}
+
+func (c *JobQueue) Dequeue() error {
+	if len(c.queue) > 0 {
+		c.lock.Lock()
+		defer c.lock.Unlock()
+		c.queue = c.queue[1:]
+		return nil
+	}
+	return fmt.Errorf("Pop Error: Queue is empty")
+}
+
+func (c *JobQueue) Front() (*Job, error) {
+	if len(c.queue) > 0 {
+		c.lock.Lock()
+		defer c.lock.Unlock()
+		return c.queue[0], nil
+	}
+	return nil, fmt.Errorf("Peep Error: Queue is empty")
+}
+
+func (c *JobQueue) Size() int {
+	return len(c.queue)
+}
+
+func (c *JobQueue) Empty() bool {
+	return len(c.queue) == 0
 }

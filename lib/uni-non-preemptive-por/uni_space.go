@@ -1,4 +1,4 @@
-package uni
+package uni_non_preemptive_por
 
 import (
 	"fmt"
@@ -113,6 +113,7 @@ func exploreState(s *State) bool {
 	logger.Debug("Next range: ", nextRange.String())
 
 	// Iterate over all incomplete jobs that are released no later than nextRange.End
+	var eligible_successors comm.JobSet
 	for _, jt := range jobsByEarliestArrival {
 		if jt.Arrival.Start < s.EarliestPendingRelease {
 			continue
@@ -129,9 +130,14 @@ func exploreState(s *State) bool {
 		logger.Debug("+ ", jt.Name)
 		if isEligibleSuccessor(s, *jt) {
 			logger.Debug("  --> can be next ")
-			schedule(s, *jt)
-			foundJob = true
+			//schedule(s, *jt)
+			eligible_successors = append(eligible_successors, jt)
+			//foundJob = true
 		}
+	}
+
+	if len(eligible_successors) > 1 {
+
 	}
 
 	return foundJob

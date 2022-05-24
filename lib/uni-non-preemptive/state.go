@@ -1,4 +1,4 @@
-package uni
+package uni_non_preemptive
 
 import (
 	"fmt"
