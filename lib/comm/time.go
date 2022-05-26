@@ -39,3 +39,7 @@ func Minimum(t1, t2 Time) Time {
 	}
 	return t2
 }
+
+func DeadlineMissTolerance() Time {
+	return Time(1e-6)
+}

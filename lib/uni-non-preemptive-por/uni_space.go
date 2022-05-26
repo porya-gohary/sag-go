@@ -31,6 +31,8 @@ var rta resposeTimes
 var aborted bool = false
 var deadlineMiss bool = false
 
+var PorReleaseOrder bool = true
+
 var logger *verbose.Logger
 
 func ExploreNaively(w comm.JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verbose.Logger) {
@@ -135,9 +137,57 @@ func exploreState(s *State) bool {
 			//foundJob = true
 		}
 	}
-
 	if len(eligible_successors) > 1 {
+		rs := CreateReductionSet(s, eligible_successors)
+		for true {
+			if rs.HasPotentialDeadlineMisses() {
+				logger.Debug("  --> has potential deadline misses")
+				break
+			}
 
+			var interferingJobs comm.JobSet
+			//for _, jt := range jobsByEarliestArrival {
+			//	if jt.Arrival.Start < s.EarliestPendingRelease {
+			//		continue
+			//	}
+			//
+			//	if isDispatched(s.ScheduledJobs, *jt) {
+			//		continue
+			//	}
+			//
+			//	if jt.GetEarliestArrival() > rs.GetLatestBusyTime()-rs.GetMinWCET() {
+			//		break
+			//	}
+			//
+			//	//	TODO: Implement the precedence constraint
+			//}
+
+			if interferingJobs.Empty() {
+				logger.Debug("  --> no interfering jobs")
+				break
+			} else {
+				if PorReleaseOrder {
+					jx := interferingJobs.SelectJobByReleaseOrder()
+					rs.AddJob(jx)
+				} else {
+					jx := interferingJobs.SelectJobByPriority()
+					rs.AddJob(jx)
+				}
+			}
+
+		}
+		if !rs.HasPotentialDeadlineMisses() {
+			logger.Debug("  --> Partial-order reduction is safe")
+			//TODO: Implement later
+			scheduleReductionSet(s, rs)
+			foundJob = true
+		}
+	} else {
+		logger.Debug("  --> Partial-order reduction is not safe ")
+		for _, jt := range eligible_successors {
+			schedule(s, *jt)
+			foundJob = true
+		}
 	}
 
 	return foundJob
@@ -169,6 +219,28 @@ func makeState(finishTime comm.Interval, jobs comm.JobSet, earliestReleasePendin
 
 	edgeLabel := dispatchedJob.Name + "\\nDL=" + fmt.Sprint(dispatchedJob.Deadline)
 	edgeLabel += "\\nES=" + fmt.Sprint(finishTime.Start-dispatchedJob.Cost.Start) + "\\nLS=" + fmt.Sprint(finishTime.End-dispatchedJob.Cost.End)
+	edgeLabel += "\\nEF=" + fmt.Sprint(finishTime.Start) + "\\nLF=" + fmt.Sprint(finishTime.End)
+	dag.AddEdge(parentState.GetID(), newStateID, edgeLabel)
+	statesIndex++
+
+	logger.Debug("Make state: ", s.GetName())
+	logger.Debug("Availability: ", s.Availability.String())
+	logger.Debug("Earliest pending release: ", s.EarliestPendingRelease)
+	logger.Debug("Scheduled jobs: ", s.ScheduledJobs.AbstractString())
+	logger.Debug("----------------------------------------")
+}
+
+func makeStateForReductionSet(finishTime comm.Interval, jobs comm.JobSet, earliestReleasePending comm.Time,
+	parentState *State, rs *reductionSet) {
+
+	s := NewState(statesIndex, finishTime, jobs, earliestReleasePending)
+	newStateID, _ := dag.AddVertex(s.GetName(), s.GetLabel())
+	s.ID = newStateID
+
+	states.AddState(s)
+
+	edgeLabel := rs.GetLabel()
+	edgeLabel += "\\nES=" + fmt.Sprint(rs.GetEarliestStartTime()) + "\\nLS=" + fmt.Sprint(rs.GetLatestStartTimes())
 	edgeLabel += "\\nEF=" + fmt.Sprint(finishTime.Start) + "\\nLF=" + fmt.Sprint(finishTime.End)
 	dag.AddEdge(parentState.GetID(), newStateID, edgeLabel)
 	statesIndex++
@@ -421,6 +493,34 @@ func schedule(parentState *State, j comm.Job) {
 
 }
 
+func scheduleReductionSet(parentState *State, rs *reductionSet) {
+	alreadyScheduled := make(comm.JobSet, len(parentState.ScheduledJobs))
+	copy(alreadyScheduled, parentState.ScheduledJobs)
+
+	finishRange := nextFinishTimesForReductionSet(rs)
+
+	for _, j := range rs.GetJobs() {
+		alreadyScheduled = append(alreadyScheduled, j)
+	}
+
+	logger.Debug("++ Dispatch reduction set")
+	if beNaive {
+		makeStateForReductionSet(finishRange, alreadyScheduled, earliestPossibleJobReleaseForReductionSet(parentState, rs), parentState, rs)
+	} else {
+
+	}
+
+	for _, j := range rs.GetJobs() {
+		updateFinishTimes(*j, comm.Interval{Start: rs.getEarliestFinishTimeForJob(j), End: rs.getLatestFinishTimeForJob(j)})
+	}
+
+}
+
+func nextFinishTimesForReductionSet(rs *reductionSet) comm.Interval {
+	i := comm.Interval{Start: rs.GetEarliestFinishTime(), End: rs.GetLatestBusyTime()}
+	return i
+}
+
 func nextFinishTimes(s *State, j comm.Job) comm.Interval {
 	// standard case -- this job is never aborted or skipped
 	i := comm.Interval{Start: nextEarliestFinishTime(s, j), End: nextLatestFinishTime(s, j)}
@@ -500,6 +600,31 @@ func earliestPossibleJobRelease(s *State, j comm.Job) comm.Time {
 
 		// skip if it is the one we're ignoring
 		if j.SameJob(*jt) {
+			continue
+		}
+
+		// it's incomplete and not ignored => found the earliest
+		return jt.Arrival.Min()
+
+	}
+	return comm.Infinity()
+}
+
+func earliestPossibleJobReleaseForReductionSet(s *State, rs *reductionSet) comm.Time {
+	// Iterate over all incomplete jobs in state s
+	for _, jt := range jobsByEarliestArrival {
+
+		if jt.Arrival.Start < s.EarliestPendingRelease {
+			continue
+		}
+
+		// skip if it is already dispatched
+		if isDispatched(s.ScheduledJobs, *jt) {
+			continue
+		}
+
+		// skip if it is the one we're ignoring
+		if rs.ContainsJob(jt) {
 			continue
 		}
 

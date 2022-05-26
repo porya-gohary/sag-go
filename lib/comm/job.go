@@ -72,6 +72,10 @@ func (j Job) PriorityExceeds(otherPriority Time) bool {
 	return j.Priority < otherPriority
 }
 
+func (j Job) ExceedsDeadline(now Time) bool {
+	return (j.Deadline < now) && (now-j.Deadline > DeadlineMissTolerance())
+}
+
 ////////////////////////////////
 // Functions for jobset
 func (j JobSet) String() string {
@@ -168,6 +172,34 @@ func (S JobSet) Contains(job Job) bool {
 		}
 	}
 	return false
+}
+
+func (S JobSet) Empty() bool {
+	return len(S) == 0
+}
+
+//SelectJobByReleaseOrder find job with the lowest release time
+func (S *JobSet) SelectJobByReleaseOrder() *Job {
+	var job Job
+	for _, j := range *S {
+		if job.GetEarliestArrival() == 0 {
+			job = *j
+		} else if job.GetEarliestArrival() > j.GetEarliestArrival() {
+			job = *j
+		}
+	}
+	return &job
+}
+
+// SelectJobByPriority find job with the lowest priority
+func (S *JobSet) SelectJobByPriority() *Job {
+	var job Job
+	for _, j := range *S {
+		if job.HigherPriorityThan(*j) {
+			job = *j
+		}
+	}
+	return &job
 }
 
 ////////////////////////////////

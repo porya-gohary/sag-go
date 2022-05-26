@@ -1,6 +1,9 @@
 package uni_non_preemptive_por
 
-import "go-test/lib/comm"
+import (
+	"fmt"
+	"go-test/lib/comm"
+)
 
 type reductionSet struct {
 	jobs                    comm.JobSet
@@ -15,7 +18,7 @@ type reductionSet struct {
 	availability            comm.Interval
 }
 
-func createReductionSet(s *State, eligibleSuccessors comm.JobSet) *reductionSet {
+func CreateReductionSet(s *State, eligibleSuccessors comm.JobSet) *reductionSet {
 	jobsByEarliestArrivalLocal := make(comm.JobSet, len(eligibleSuccessors))
 	jobsByLatestArrivalLocal := make(comm.JobSet, len(eligibleSuccessors))
 	jobsByWCETLocal := make(comm.JobSet, len(eligibleSuccessors))
@@ -100,7 +103,7 @@ func (rs *reductionSet) setLatestIdleTime() {
 
 func (rs *reductionSet) setLatestStartTimes() {
 	jobsByPrio := rs.preprocessPriorities()
-	var startTimes map[string]comm.Time
+	startTimes := make(map[string]comm.Time)
 	for _, j := range rs.jobs {
 		startTimes[j.Name] = rs.computeLatestStartTime(j, jobsByPrio)
 	}
@@ -109,13 +112,14 @@ func (rs *reductionSet) setLatestStartTimes() {
 
 // Preprocess priorities for s_i by setting priority of each job to the lowest priority of its predecessors
 func (rs *reductionSet) preprocessPriorities() map[string]comm.Time {
-	var jobsByPrio map[string]comm.Time
+	jobsByPrio := make(map[string]comm.Time)
 	for _, j := range rs.jobs {
 		maxPredPrio := comm.Time(0)
 		//	TODO: implement precedence constraints
 		p := comm.Maximum(maxPredPrio, j.Priority)
 		jobsByPrio[j.Name] = p
 	}
+	fmt.Println("Preprocessed priorities: ", jobsByPrio)
 	return jobsByPrio
 }
 
@@ -206,4 +210,85 @@ func (rs *reductionSet) setMaxPriority() {
 		}
 	}
 	rs.maxPriority = maxPriority
+}
+
+func (rs *reductionSet) getEarliestFinishTimeForJob(j *comm.Job) comm.Time {
+	return comm.Maximum(rs.availability.Min(), j.GetEarliestArrival()) + j.GetLeastCost()
+}
+
+func (rs *reductionSet) getLatestFinishTimeForJob(j *comm.Job) comm.Time {
+	return rs.getLatestStartTimeForJob(j) + j.GetMaximalCost()
+}
+
+func (rs *reductionSet) getLatestStartTimeForJob(j *comm.Job) comm.Time {
+	if t, ok := rs.latestStartTimes[j.Name]; ok {
+		return t
+	} else {
+		return comm.Time(-1)
+	}
+}
+
+func (rs *reductionSet) HasPotentialDeadlineMisses() bool {
+	for _, j := range rs.jobs {
+		if j.ExceedsDeadline(rs.getLatestStartTime(j) + j.GetMaximalCost()) {
+			return true
+		}
+	}
+	return false
+}
+
+func (rs *reductionSet) getLatestStartTime(j *comm.Job) comm.Time {
+	return rs.latestStartTimes[j.Name]
+}
+
+func (rs *reductionSet) GetMinWCET() comm.Time {
+	return rs.jobsByWCET[0].GetMaximalCost()
+}
+
+func (rs *reductionSet) GetLatestBusyTime() comm.Time {
+	return rs.latestBusyTime
+}
+
+func (rs *reductionSet) AddJob(j *comm.Job) {
+	rs.jobs = append(rs.jobs, j)
+	rs.jobsByEarliestArrival = append(rs.jobsByEarliestArrival, j).SortByEarliestArrival()
+	rs.jobsByLatestArrival = append(rs.jobsByLatestArrival, j).SortByLatestArrival()
+	rs.jobsByWCET = append(rs.jobsByWCET, j).SortByWCET()
+
+	rs.setLatestBusyTime()
+	rs.setLatestIdleTime()
+	rs.setLatestStartTimes()
+	rs.setMaxPriority()
+}
+
+func (rs *reductionSet) GetEarliestFinishTime() comm.Time {
+	t := rs.availability.Min()
+	for _, j := range rs.jobsByEarliestArrival {
+		t = comm.Maximum(t, j.GetEarliestArrival()+j.GetLeastCost())
+	}
+	return t
+}
+
+func (rs *reductionSet) GetJobs() comm.JobSet {
+	return rs.jobs
+}
+
+func (rs *reductionSet) ContainsJob(j *comm.Job) bool {
+	return rs.jobs.Contains(*j)
+}
+
+func (rs *reductionSet) GetEarliestStartTime() comm.Time {
+	return comm.Maximum(rs.availability.Min(), rs.jobsByEarliestArrival[0].GetEarliestArrival())
+}
+
+func (rs *reductionSet) GetLatestStartTimes() comm.Time {
+	return comm.Maximum(rs.availability.Max(), rs.jobsByLatestArrival[0].GetLatestArrival())
+}
+
+func (rs *reductionSet) GetLabel() string {
+	var label string
+	for _, j := range rs.jobs {
+		label += j.Name + "\\nDL=" + j.Deadline.String() + "\\n"
+	}
+	return label
 }

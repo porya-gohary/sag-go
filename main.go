@@ -6,6 +6,7 @@ import (
 	"github.com/lfkeitel/verbose"
 	"go-test/lib/comm"
 	"go-test/lib/uni-non-preemptive"
+	uni_non_preemptive_por "go-test/lib/uni-non-preemptive-por"
 	"os"
 	"time"
 )
@@ -63,14 +64,15 @@ Options:
 	workload := comm.ReadJobSet(inputFile, logger)
 
 	if beNaive {
-		uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
+		//uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
+		uni_non_preemptive_por.ExploreNaively(workload, 10, true, 10, logger)
+		uni_non_preemptive_por.PrintResponseTimes()
 	} else {
 		uni_non_preemptive.Explore(workload, 10, true, 10, logger)
+		uni_non_preemptive.PrintResponseTimes()
 	}
 
-	uni_non_preemptive.PrintResponseTimes()
-
-	fmt.Println("Naive exploration finished")
+	fmt.Println("Exploration finished")
 	fmt.Println("Time elapsed: ", time.Since(start))
 
 }
