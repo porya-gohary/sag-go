@@ -1,0 +1,97 @@
+jobset:
+  - Task ID: 1
+    Job ID: 1
+    Arrival min: 0
+    Arrival max: 0
+    Cost min: 1
+    Cost max: 2
+    Deadline: 10
+    Priority: 1
+  - Task ID: 1
+    Job ID: 2
+    Arrival min: 10
+    Arrival max: 10
+    Cost min: 1
+    Cost max: 2
+    Deadline: 20
+    Priority: 2
+  - Task ID: 1
+    Job ID: 3
+    Arrival min: 20
+    Arrival max: 20
+    Cost min: 1
+    Cost max: 2
+    Deadline: 30
+    Priority: 3
+  - Task ID: 1
+    Job ID: 4
+    Arrival min: 30
+    Arrival max: 30
+    Cost min: 1
+    Cost max: 2
+    Deadline: 40
+    Priority: 4
+  - Task ID: 1
+    Job ID: 5
+    Arrival min: 40
+    Arrival max: 40
+    Cost min: 1
+    Cost max: 2
+    Deadline: 50
+    Priority: 5
+  - Task ID: 1
+    Job ID: 6
+    Arrival min: 50
+    Arrival max: 50
+    Cost min: 1
+    Cost max: 2
+    Deadline: 60
+    Priority: 6
+  - Task ID: 2
+    Job ID: 7
+    Arrival min: 0
+    Arrival max: 0
+    Cost min: 3
+    Cost max: 5
+    Deadline: 30
+    Priority: 8
+  - Task ID: 2
+    Job ID: 8
+    Arrival min: 30
+    Arrival max: 32
+    Cost min: 2
+    Cost max: 3
+    Deadline: 60
+    Priority: 9
+  - Task ID: 3
+    Job ID: 10
+    Arrival min: 0
+    Arrival max: 0
+    Cost min: 3
+    Cost max: 4
+    Deadline: 20
+    Priority: 10
+  - Task ID: 3
+    Job ID: 11
+    Arrival min: 20
+    Arrival max: 30
+    Cost min: 3
+    Cost max: 4
+    Deadline: 40
+    Priority: 11
+  - Task ID: 3
+    Job ID: 12
+    Arrival min: 40
+    Arrival max: 40
+    Cost min: 2
+    Cost max: 3
+    Deadline: 60
+    Priority: 12
+  - Task ID: 4
+    Job ID: 9
+    Arrival min: 0
+    Arrival max: 3
+    Cost min: 3
+    Cost max: 6
+    Deadline: 60
+    Priority: 7
