@@ -4,6 +4,9 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/lfkeitel/verbose"
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
+	"log"
 	"os"
 	"strconv"
 )
@@ -56,6 +59,52 @@ func ReadJobSet(filename string, v *verbose.Logger) JobSet {
 			Priority: Time(priority),
 		}
 		// fmt.Println(jobInstance.String())
+		jobs = append(jobs, jobInstance)
+	}
+
+	return jobs
+}
+
+func ReadJobSetYAML(filename string, v *verbose.Logger) JobSet {
+
+	type yamlFile struct {
+		Jobset []struct {
+			TaskID     uint `yaml:"Task ID"`
+			JobID      uint `yaml:"Job ID"`
+			ArrivalMin Time `yaml:"Arrival min"`
+			ArrivalMax Time `yaml:"Arrival max"`
+			CostMin    Time `yaml:"Cost min"`
+			CostMax    Time `yaml:"Cost max"`
+			Deadline   Time `yaml:"Deadline"`
+			Priority   Time `yaml:"Priority"`
+		} `yaml:"jobset"`
+	}
+
+	var jobs JobSet
+	jobSetInYaml := yamlFile{}
+
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	v.Debug("Successfully Opened YAML file")
+
+	if err := yaml.Unmarshal([]byte(file), &jobSetInYaml); err != nil {
+		v.Panic(err)
+		panic(err)
+	}
+
+	for _, job := range jobSetInYaml.Jobset {
+		jobInstance := &Job{
+			Name:     "J" + fmt.Sprint(job.TaskID) + "," + fmt.Sprint(job.JobID),
+			TaskID:   job.TaskID,
+			JobID:    job.JobID,
+			Arrival:  Interval{Start: job.ArrivalMin, End: job.ArrivalMax},
+			Cost:     Interval{Start: job.CostMin, End: job.CostMax},
+			Deadline: job.Deadline,
+			Priority: job.Priority,
+		}
 		jobs = append(jobs, jobInstance)
 	}
 

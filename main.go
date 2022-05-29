@@ -5,9 +5,10 @@ import (
 	"github.com/docopt/docopt-go"
 	"github.com/lfkeitel/verbose"
 	"go-test/lib/comm"
-	"go-test/lib/uni-non-preemptive"
+	uni_non_preemptive "go-test/lib/uni-non-preemptive"
 	uni_non_preemptive_por "go-test/lib/uni-non-preemptive-por"
 	"os"
+	"path/filepath"
 	"time"
 )
 
@@ -22,7 +23,7 @@ Usage:
 	main -h
 
 Options:
-	-j FILE, --jobset FILE       jobset file [default: jobset.txt]
+	-j FILE, --jobset FILE       jobset file [default: jobset.csv]
 	-n, --naive                  use the naive exploration method [default: False]
 	-r N,--verbose=N             print log messages (0-5) [default: 0]
 	-v,--version                 show version and exit
@@ -59,9 +60,17 @@ Options:
 	}
 
 	logger.AddHandler("123", sh)
+	var workload comm.JobSet
 
 	//read job set
-	workload := comm.ReadJobSet(inputFile, logger)
+	fileExtension := filepath.Ext(inputFile)
+	if fileExtension == ".csv" {
+		workload = comm.ReadJobSet(inputFile, logger)
+	} else if fileExtension == ".yaml" {
+		workload = comm.ReadJobSetYAML(inputFile, logger)
+	} else {
+		logger.Critical("Error: Invalid file extension")
+	}
 
 	if beNaive {
 		//uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
