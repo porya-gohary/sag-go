@@ -24,9 +24,10 @@ Usage:
 
 Options:
 	-j FILE, --jobset FILE       jobset file [default: jobset.csv]
-	-n, --naive                  use the naive exploration method [default: False]
-	-r N,--verbose=N             print log messages (0-5) [default: 0]
-	-v,--version                 show version and exit
+	-n, --naive                  use the naive exploration method [default: false]
+	-p, --por                    use the partial-order reduction [default: false]
+	-r N, --verbose=N            print log messages (0-5) [default: 0]
+	-v, --version                show version and exit
 	-h, --help                   show this message
 `
 
@@ -34,6 +35,7 @@ Options:
 
 	//Parsing the command-line arguments
 	beNaive, _ := arguments.Bool("--naive")
+	por, _ := arguments.Bool("--por")
 	inputFile, _ := arguments.String("--jobset")
 	verboseLevel, _ := arguments.Int("--verbose")
 
@@ -74,11 +76,21 @@ Options:
 
 	if beNaive {
 		//uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
-		uni_non_preemptive_por.ExploreNaively(workload, 10, true, 10, logger)
-		uni_non_preemptive_por.PrintResponseTimes()
+		if por {
+			uni_non_preemptive_por.ExploreNaively(workload, 10, true, 10, logger)
+			uni_non_preemptive_por.PrintResponseTimes()
+		} else {
+			uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
+			uni_non_preemptive.PrintResponseTimes()
+		}
 	} else {
-		uni_non_preemptive.Explore(workload, 10, true, 10, logger)
-		uni_non_preemptive.PrintResponseTimes()
+		if por {
+			uni_non_preemptive_por.Explore(workload, 10, true, 10, logger)
+			uni_non_preemptive_por.PrintResponseTimes()
+		} else {
+			uni_non_preemptive.Explore(workload, 10, true, 10, logger)
+			uni_non_preemptive.PrintResponseTimes()
+		}
 	}
 
 	fmt.Println("Exploration finished")
