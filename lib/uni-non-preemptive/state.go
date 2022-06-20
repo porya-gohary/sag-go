@@ -41,9 +41,9 @@ func (s State) String() string {
 func (s State) GetLabel() string {
 	var t string
 	if s.EarliestPendingRelease == comm.Infinity() {
-		t = "\"" + s.GetName() + ":" + fmt.Sprintf("I[%.3f,%.3f]", s.Availability.Start, s.Availability.End) + "\\nER=" + "Inf" + "\""
+		t = "\"" + s.GetName() + ":" + fmt.Sprintf("I[%s,%s]", s.Availability.Start.String(), s.Availability.End.String()) + "\\nER=" + "Inf" + "\""
 	} else {
-		t = "\"" + s.GetName() + ":" + fmt.Sprintf("I[%.3f,%.3f]", s.Availability.Start, s.Availability.End) + "\\nER=" + fmt.Sprintf("%.3f", s.EarliestPendingRelease) + "\""
+		t = "\"" + s.GetName() + ":" + fmt.Sprintf("I[%s,%s]", s.Availability.Start.String(), s.Availability.End.String()) + "\\nER=" + fmt.Sprintf("%s", s.EarliestPendingRelease.String()) + "\""
 	}
 
 	return t

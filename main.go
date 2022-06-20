@@ -26,6 +26,7 @@ Options:
 	-j FILE, --jobset FILE       jobset file [default: jobset.csv]
 	-n, --naive                  use the naive exploration method [default: false]
 	-p, --por                    use the partial-order reduction [default: false]
+	-d, --dense-time             use dense time model [default: false]
 	-r N, --verbose=N            print log messages (0-5) [default: 0]
 	-v, --version                show version and exit
 	-h, --help                   show this message
@@ -38,6 +39,7 @@ Options:
 	por, _ := arguments.Bool("--por")
 	inputFile, _ := arguments.String("--jobset")
 	verboseLevel, _ := arguments.Int("--verbose")
+	denseTime, _ := arguments.Bool("--dense-time")
 
 	start := time.Now()
 
@@ -72,6 +74,10 @@ Options:
 		workload = comm.ReadJobSetYAML(inputFile, logger)
 	} else {
 		logger.Critical("Error: Invalid file extension")
+	}
+
+	if denseTime {
+		comm.WantDenseTimeModel()
 	}
 
 	if beNaive {

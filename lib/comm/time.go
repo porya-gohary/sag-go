@@ -5,25 +5,40 @@ import (
 	"math"
 )
 
+var denseTimeModel bool = false
+
 type DiscreteTime int32
 
 type DenseTime float32
 
-//type Time interface {
-//
-//}
 type Time float32
 
+func WantDenseTimeModel() {
+	denseTimeModel = true
+}
+
 func (t Time) String() string {
-	return fmt.Sprintf("%f", float32(t))
+	if denseTimeModel {
+		return fmt.Sprintf("%f", DenseTime(t))
+	} else {
+		return fmt.Sprintf("%d", DiscreteTime(t))
+	}
 }
 
 func Infinity() Time {
-	return Time(math.MaxFloat32)
+	if denseTimeModel {
+		return Time(math.MaxFloat32)
+	} else {
+		return Time(math.MaxInt32)
+	}
 }
 
 func Epsilon() Time {
-	return Time(math.SmallestNonzeroFloat32)
+	if denseTimeModel {
+		return Time(math.SmallestNonzeroFloat32)
+	} else {
+		return Time(1)
+	}
 }
 
 func Maximum(t1, t2 Time) Time {
