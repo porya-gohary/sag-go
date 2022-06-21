@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-type resposeTimes map[string]comm.Interval
+type responseTimes map[string]comm.Interval
 
 var beNaive bool = false
 var dag *comm.DAG
@@ -26,7 +26,7 @@ var jobsByPriority comm.JobSet
 var workload comm.JobSet
 
 // response times
-var rta resposeTimes
+var rta responseTimes
 
 var aborted bool = false
 var deadlineMiss bool = false
@@ -37,7 +37,7 @@ func ExploreNaively(w comm.JobSet, timeout uint, earlyExit bool, maxDepth uint, 
 	beNaive = true
 	logger = v
 	startTime = time.Now()
-	rta = make(resposeTimes)
+	rta = make(responseTimes)
 	workload = w
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
@@ -46,7 +46,7 @@ func ExploreNaively(w comm.JobSet, timeout uint, earlyExit bool, maxDepth uint, 
 func Explore(w comm.JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verbose.Logger) {
 	logger = v
 	startTime = time.Now()
-	rta = make(resposeTimes)
+	rta = make(responseTimes)
 	workload = w
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
@@ -93,8 +93,6 @@ func explore(workload comm.JobSet, timeout uint, earlyExit bool, maxDepth uint) 
 
 		currentJobCount++
 	}
-
-	dag.MakeDot("out")
 
 }
 
@@ -543,4 +541,12 @@ func PrintResponseTimes() {
 	for _, j := range workload {
 		fmt.Println(j.Name, ": ", rta[j.Name].String())
 	}
+}
+
+func WriteResponseTimes(filePath string) {
+	comm.WriteResponseTimes(filePath, rta, workload)
+}
+
+func MakeDotFile(filePath string) {
+	dag.MakeDot(filePath)
 }

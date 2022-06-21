@@ -9,6 +9,7 @@ import (
 	uni_non_preemptive_por "go-test/lib/uni-non-preemptive-por"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -27,12 +28,13 @@ Options:
 	-n, --naive                  use the naive exploration method [default: false]
 	-p, --por                    use the partial-order reduction [default: false]
 	-d, --dense-time             use dense time model [default: false]
+	-c, --csv                    store the best- and worst-case response times to csv file [default: false]
 	-r N, --verbose=N            print log messages (0-5) [default: 0]
 	-v, --version                show version and exit
 	-h, --help                   show this message
 `
 
-	arguments, _ := docopt.ParseArgs(argUsage, nil, "0.8.1")
+	arguments, _ := docopt.ParseArgs(argUsage, nil, "0.8.2")
 
 	//Parsing the command-line arguments
 	beNaive, _ := arguments.Bool("--naive")
@@ -40,6 +42,7 @@ Options:
 	inputFile, _ := arguments.String("--jobset")
 	verboseLevel, _ := arguments.Int("--verbose")
 	denseTime, _ := arguments.Bool("--dense-time")
+	wantCsv, _ := arguments.Bool("--csv")
 
 	start := time.Now()
 
@@ -65,6 +68,7 @@ Options:
 
 	logger.AddHandler("123", sh)
 	var workload comm.JobSet
+	var csvOutputFile string
 
 	//read job set
 	fileExtension := filepath.Ext(inputFile)
@@ -80,22 +84,42 @@ Options:
 		comm.WantDenseTimeModel()
 	}
 
+	if wantCsv {
+		csvOutputFile = strings.TrimSuffix(inputFile, filepath.Ext(inputFile)) + ".rta.csv"
+	}
+	dotOutputFile := strings.TrimSuffix(inputFile, filepath.Ext(inputFile))
+
 	if beNaive {
-		//uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
 		if por {
 			uni_non_preemptive_por.ExploreNaively(workload, 10, true, 10, logger)
 			uni_non_preemptive_por.PrintResponseTimes()
+			uni_non_preemptive_por.MakeDotFile(dotOutputFile)
+			if wantCsv {
+				uni_non_preemptive_por.WriteResponseTimes(csvOutputFile)
+			}
 		} else {
 			uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
 			uni_non_preemptive.PrintResponseTimes()
+			uni_non_preemptive.MakeDotFile(dotOutputFile)
+			if wantCsv {
+				uni_non_preemptive.WriteResponseTimes(csvOutputFile)
+			}
 		}
 	} else {
 		if por {
 			uni_non_preemptive_por.Explore(workload, 10, true, 10, logger)
 			uni_non_preemptive_por.PrintResponseTimes()
+			uni_non_preemptive_por.MakeDotFile(dotOutputFile)
+			if wantCsv {
+				uni_non_preemptive_por.WriteResponseTimes(csvOutputFile)
+			}
 		} else {
 			uni_non_preemptive.Explore(workload, 10, true, 10, logger)
 			uni_non_preemptive.PrintResponseTimes()
+			uni_non_preemptive.MakeDotFile(dotOutputFile)
+			if wantCsv {
+				uni_non_preemptive.WriteResponseTimes(csvOutputFile)
+			}
 		}
 	}
 
