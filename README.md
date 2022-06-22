@@ -65,6 +65,14 @@ Each input file describes a set of jobs. Each job is described by the following 
 
 ## 🚧 Limitations
 - For now, the framework just supports single processor.
+
+## 📝 TODO
+- [x] Implementation of uni-processor
+- [x] Implementation of uni-processor with partial-order reduction
+- [ ] Implement IIP
+- [ ] Implement dependency
+- [ ] Implement global multi-processor
+
 ## 📜 License
 Copyright © 2022 [Pourya Gohari](https://pourya-gohari.ir)
 
