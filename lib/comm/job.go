@@ -7,13 +7,14 @@ import (
 )
 
 type Job struct {
-	Name     string
-	TaskID   uint
-	JobID    uint
-	Arrival  Interval
-	Cost     Interval
-	Deadline Time
-	Priority Time
+	Name         string
+	TaskID       uint
+	JobID        uint
+	Arrival      Interval
+	Cost         Interval
+	Deadline     Time
+	Priority     Time
+	Predecessors []string
 }
 
 type JobSet []*Job
@@ -24,7 +25,7 @@ type JobQueue struct {
 }
 
 func (j Job) String() string {
-	return j.Name + "\t" + j.Arrival.String() + "\t" + j.Cost.String() + "\t" + j.Deadline.String() + "\t" + j.Priority.String()
+	return j.Name + "\t" + j.Arrival.String() + "\t" + j.Cost.String() + "\t" + j.Deadline.String() + "\t" + j.Priority.String() + "\t" + fmt.Sprint(j.Predecessors)
 }
 
 func (j Job) HigherPriorityThan(other Job) bool {
@@ -74,6 +75,10 @@ func (j Job) PriorityExceeds(otherPriority Time) bool {
 
 func (j Job) ExceedsDeadline(now Time) bool {
 	return (j.Deadline < now) && (now-j.Deadline > DeadlineMissTolerance())
+}
+
+func (j *Job) AddPredecessor(predecessor string) {
+	j.Predecessors = append(j.Predecessors, predecessor)
 }
 
 ////////////////////////////////
@@ -147,6 +152,15 @@ func (S JobSet) IndexOf(job Job) int {
 		}
 	}
 	return -1
+}
+
+func (S *JobSet) GetByName(name string) *Job {
+	for _, j := range *S {
+		if j.Name == name {
+			return j
+		}
+	}
+	return nil
 }
 
 func (S JobSet) Compare(other JobSet) bool {

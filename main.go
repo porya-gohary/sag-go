@@ -25,11 +25,12 @@ Usage:
 
 Options:
 	-j FILE, --jobset FILE       jobset file [default: jobset.csv]
+	-e FILE, --precedence FILE   jobset's precedence file
 	-n, --naive                  use the naive exploration method [default: false]
 	-p, --por                    use the partial-order reduction [default: false]
 	-d, --dense-time             use dense time model [default: false]
 	-c, --csv                    store the best- and worst-case response times to csv file [default: false]
-	-r N, --verbose=N            print log messages (0-5) [default: 0]
+	-r N, --verbose N            print log messages (0-5) [default: 0]
 	-v, --version                show version and exit
 	-h, --help                   show this message
 `
@@ -40,13 +41,14 @@ Options:
 	beNaive, _ := arguments.Bool("--naive")
 	por, _ := arguments.Bool("--por")
 	inputFile, _ := arguments.String("--jobset")
+	precedenceFile, _ := arguments.String("--precedence")
 	verboseLevel, _ := arguments.Int("--verbose")
 	denseTime, _ := arguments.Bool("--dense-time")
 	wantCsv, _ := arguments.Bool("--csv")
 
 	start := time.Now()
 
-	logger := verbose.New("NP::uni-non-preemptive")
+	commonLogger := verbose.New("Common")
 	sh := verbose.NewStdoutHandler(true)
 	//Set verbose level
 	if verboseLevel == 0 {
@@ -66,18 +68,26 @@ Options:
 		os.Exit(1)
 	}
 
-	logger.AddHandler("123", sh)
+	commonLogger.AddHandler("1", sh)
 	var workload comm.JobSet
 	var csvOutputFile string
 
 	//read job set
 	fileExtension := filepath.Ext(inputFile)
 	if fileExtension == ".csv" {
-		workload = comm.ReadJobSet(inputFile, logger)
+		workload = comm.ReadJobSet(inputFile, commonLogger)
 	} else if fileExtension == ".yaml" {
-		workload = comm.ReadJobSetYAML(inputFile, logger)
+		workload = comm.ReadJobSetYAML(inputFile, commonLogger)
 	} else {
-		logger.Critical("Error: Invalid file extension")
+		commonLogger.Critical("Error: Invalid file extension")
+	}
+
+	//read precedence file
+	precedenceFileExtension := filepath.Ext(precedenceFile)
+	if precedenceFileExtension == ".csv" {
+		comm.ReadPrecedence(precedenceFile, &workload, commonLogger)
+	} else {
+		commonLogger.Critical("Error: Invalid file extension")
 	}
 
 	if denseTime {
@@ -91,14 +101,18 @@ Options:
 
 	if beNaive {
 		if por {
-			uni_non_preemptive_por.ExploreNaively(workload, 10, true, 10, logger)
+			analysisLogger := verbose.New("NP::Uni::Naive::POR")
+			analysisLogger.AddHandler("1", sh)
+			uni_non_preemptive_por.ExploreNaively(workload, 10, true, 10, analysisLogger)
 			uni_non_preemptive_por.PrintResponseTimes()
 			uni_non_preemptive_por.MakeDotFile(dotOutputFile)
 			if wantCsv {
 				uni_non_preemptive_por.WriteResponseTimes(csvOutputFile)
 			}
 		} else {
-			uni_non_preemptive.ExploreNaively(workload, 10, true, 10, logger)
+			analysisLogger := verbose.New("NP::Uni::Naive")
+			analysisLogger.AddHandler("1", sh)
+			uni_non_preemptive.ExploreNaively(workload, 10, true, 10, analysisLogger)
 			uni_non_preemptive.PrintResponseTimes()
 			uni_non_preemptive.MakeDotFile(dotOutputFile)
 			if wantCsv {
@@ -107,14 +121,18 @@ Options:
 		}
 	} else {
 		if por {
-			uni_non_preemptive_por.Explore(workload, 10, true, 10, logger)
+			analysisLogger := verbose.New("NP::Uni::POR")
+			analysisLogger.AddHandler("1", sh)
+			uni_non_preemptive_por.Explore(workload, 10, true, 10, analysisLogger)
 			uni_non_preemptive_por.PrintResponseTimes()
 			uni_non_preemptive_por.MakeDotFile(dotOutputFile)
 			if wantCsv {
 				uni_non_preemptive_por.WriteResponseTimes(csvOutputFile)
 			}
 		} else {
-			uni_non_preemptive.Explore(workload, 10, true, 10, logger)
+			analysisLogger := verbose.New("NP::Uni")
+			analysisLogger.AddHandler("1", sh)
+			uni_non_preemptive.Explore(workload, 10, true, 10, analysisLogger)
 			uni_non_preemptive.PrintResponseTimes()
 			uni_non_preemptive.MakeDotFile(dotOutputFile)
 			if wantCsv {

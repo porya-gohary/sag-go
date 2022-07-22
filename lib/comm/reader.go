@@ -65,6 +65,42 @@ func ReadJobSet(filename string, v *verbose.Logger) JobSet {
 	return jobs
 }
 
+func ReadPrecedence(filename string, jobs *JobSet, v *verbose.Logger) {
+
+	csvFile, err := os.Open(filename)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	v.Debug("Successfully Opened CSV file")
+
+	defer csvFile.Close()
+
+	reader := csv.NewReader(csvFile)
+	reader.TrimLeadingSpace = true
+
+	// skip first line
+	if _, err := reader.Read(); err != nil {
+		v.Panic(err)
+		panic(err)
+	}
+
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		v.Error(err)
+	}
+
+	for _, line := range csvLines {
+		fromTaskid, _ := strconv.ParseUint(line[0], 10, 32)
+		fromJobid, _ := strconv.ParseUint(line[1], 10, 32)
+		fromJobName := "J" + fmt.Sprint(fromTaskid) + "," + fmt.Sprint(fromJobid)
+		toTaskid, _ := strconv.ParseUint(line[2], 10, 32)
+		toJobid, _ := strconv.ParseUint(line[3], 10, 32)
+		toJobName := "J" + fmt.Sprint(toTaskid) + "," + fmt.Sprint(toJobid)
+		jobs.GetByName(toJobName).AddPredecessor(fromJobName)
+	}
+}
+
 func ReadJobSetYAML(filename string, v *verbose.Logger) JobSet {
 
 	type yamlFile struct {
