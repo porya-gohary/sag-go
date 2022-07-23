@@ -219,6 +219,14 @@ func isDispatched(jobs comm.JobSet, job comm.Job) bool {
 	return false
 }
 
+func ready(state *State, job comm.Job) bool {
+	if !state.ScheduledJobs.ContainsByNames(job.GetPredecessors()) {
+		return false
+	}
+
+	return true
+}
+
 func priorityEligible(s *State, j comm.Job, at comm.Time) bool {
 	return !certainlyReleasedHigherPriorityExists(s, j, at)
 }
@@ -227,7 +235,7 @@ func certainlyReleasedHigherPriorityExists(s *State, j comm.Job, at comm.Time) b
 	// ts_min := state.Availability.From()
 	// rel_min := state.EarliestPendingRelease
 	for _, jt := range jobsByLatestArrival {
-		// Iterare over all incomplete jobs that are certainly released no later than "at"
+		// Iterate over all incomplete jobs that are certainly released no later than "at"
 
 		logger.Debug("        - considering ", jt.Name)
 		if jt.GetEarliestArrival() < s.EarliestPendingRelease {
@@ -251,11 +259,10 @@ func certainlyReleasedHigherPriorityExists(s *State, j comm.Job, at comm.Time) b
 			continue
 		}
 
-		// TODO: implement later
 		// ignore jobs that aren't yet ready
-		// if (!ready(s, j)){
-		// 	continue
-		// }
+		if !ready(s, *jt) {
+			continue
+		}
 
 		// check priority
 		if jt.HigherPriorityThan(j) {
@@ -302,10 +309,10 @@ func isEligibleSuccessor(s *State, j comm.Job) bool {
 		return false
 	}
 
-	// TODO: implement later
-	// if !ready(){
-	// 	return false
-	// }
+	if !ready(s, j) {
+		logger.Debug("Job ", j.Name, "   --> not ready")
+		return false
+	}
 
 	t_s := nextEarliestStartTime(s, j)
 
@@ -435,7 +442,7 @@ func nextLatestFinishTime(s *State, j comm.Job) comm.Time {
 
 	// t_s'
 	// t_L
-	ownLatestStart := comm.Maximum(nextEligibleJobReady(s), s.Availability.Until())
+	ownLatestStart := comm.Maximum(nextEligibleJobReady(s), s.Availability.End)
 
 	logger.Debug("own latest start: ", ownLatestStart)
 

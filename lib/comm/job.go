@@ -69,6 +69,10 @@ func (j Job) GetLatestArrival() Time {
 	return j.Arrival.Until()
 }
 
+func (j Job) GetPredecessors() []string {
+	return j.Predecessors
+}
+
 func (j Job) PriorityExceeds(otherPriority Time) bool {
 	return j.Priority < otherPriority
 }
@@ -182,6 +186,24 @@ func (S JobSet) Compare(other JobSet) bool {
 func (S JobSet) Contains(job Job) bool {
 	for _, j := range S {
 		if j.Name == job.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func (S JobSet) ContainsByNames(names []string) bool {
+	for _, name := range names {
+		if !S.ContainsByName(name) {
+			return false
+		}
+	}
+	return true
+}
+
+func (S JobSet) ContainsByName(name string) bool {
+	for _, j := range S {
+		if j.Name == name {
 			return true
 		}
 	}
