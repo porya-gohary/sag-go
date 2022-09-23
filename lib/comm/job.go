@@ -238,6 +238,58 @@ func (S *JobSet) SelectJobByPriority() *Job {
 	return &job
 }
 
+func (S *JobSet) TopologicalSort() JobSet {
+	var sortedJobs JobSet
+	var temp JobQueue
+
+	for _, job := range *S {
+		if job.Predecessors == nil {
+			sortedJobs = append(sortedJobs, job)
+		} else {
+			temp.Enqueue(job)
+		}
+	}
+
+	for !temp.Empty() {
+		job, _ := temp.Front()
+		temp.Dequeue()
+		predJobs := job.GetPredecessors()
+
+		// All predecessors of j have been sorted already
+		if sortedJobs.ContainsByNames(predJobs) {
+			sortedJobs = append(sortedJobs, job)
+		} else {
+			temp.Enqueue(job)
+		}
+	}
+
+	return sortedJobs
+}
+
+func (S *JobSet) SetArrivalTimeWithPrecedence() {
+	for _, job := range *S {
+		maxEarliestArrival := job.GetEarliestArrival()
+		maxLatestArrival := job.GetLatestArrival()
+		for _, predJob := range job.GetPredecessors() {
+			predJob := S.GetByName(predJob)
+			if predJob.GetEarliestArrival() > maxEarliestArrival {
+				maxEarliestArrival = predJob.GetEarliestArrival()
+			}
+			if predJob.GetLatestArrival() > maxLatestArrival {
+				maxLatestArrival = predJob.GetLatestArrival()
+			}
+		}
+		job.Arrival.Start = maxEarliestArrival
+		job.Arrival.End = maxLatestArrival
+
+	}
+}
+
+func (S *JobSet) PreprocessJobs() {
+	S.TopologicalSort()
+	S.SetArrivalTimeWithPrecedence()
+}
+
 ////////////////////////////////
 // Functions for job queue
 

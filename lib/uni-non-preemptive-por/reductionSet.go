@@ -1,7 +1,6 @@
 package uni_non_preemptive_por
 
 import (
-	"fmt"
 	"go-test/lib/comm"
 )
 
@@ -64,27 +63,42 @@ func (rs *reductionSet) setLatestIdleTime() {
 	idleTime := comm.Time(-1)
 
 	var idleJob *comm.Job
+	var t comm.Time
 
+	idleJobFound := false
 	for _, i := range rs.jobsByLatestArrival {
 		if i.GetLatestArrival() > rs.availability.Min() {
-			t := rs.availability.Min()
-			for _, j := range rs.jobsByEarliestArrival {
-				if j.GetLatestArrival() < i.GetLatestArrival() {
-					t = comm.Maximum(t, j.GetEarliestArrival()) + j.GetLeastCost()
-				}
-
-				if t >= i.GetLatestArrival() {
-					break
-				}
-			}
-
-			if t < i.GetLatestArrival() {
-				if idleJob == nil || i.GetLatestArrival() > idleJob.GetLatestArrival() {
-					idleJob = i
-				}
-			}
-
+			idleJob = i
+			idleJobFound = true
+			break
 		}
+	}
+
+	// No j with r_max > A1_min, so no idle time before the last job in job_set
+	if !idleJobFound {
+		rs.latestIdleTime = idleTime
+		return
+	}
+
+	for _, i := range rs.jobsByLatestArrival {
+		// compute the earliest time at which the set of all jobs with r^max < r_i^max can complete
+		t = rs.availability.Min()
+		for _, j := range rs.jobsByEarliestArrival {
+			if j.GetLatestArrival() < i.GetLatestArrival() {
+				t = comm.Maximum(t, j.GetEarliestArrival()) + j.GetLeastCost()
+			}
+
+			if t >= i.GetLatestArrival() {
+				break
+			}
+		}
+
+		if t < i.GetLatestArrival() {
+			if idleJob == nil || i.GetLatestArrival() > idleJob.GetLatestArrival() {
+				idleJob = i
+			}
+		}
+
 	}
 
 	if idleJob == nil {
@@ -119,7 +133,7 @@ func (rs *reductionSet) preprocessPriorities() map[string]comm.Time {
 		p := comm.Maximum(maxPredPrio, j.Priority)
 		jobsByPrio[j.Name] = p
 	}
-	fmt.Println("Preprocessed priorities: ", jobsByPrio)
+	//fmt.Println("Preprocessed priorities: ", jobsByPrio)
 	return jobsByPrio
 }
 
@@ -291,4 +305,76 @@ func (rs *reductionSet) GetLabel() string {
 		label += j.Name + "\\nDL=" + j.Deadline.String() + "\\n"
 	}
 	return label
+}
+
+func (rs *reductionSet) CanInterfere(job comm.Job, scheduledJobs comm.JobSet) bool {
+	if !jobSatisfiesPrecedenceConstraints(rs, job, scheduledJobs) {
+		return false
+	}
+
+	// A job can't interfere with itself
+	if rs.GetJobs().Contains(job) {
+		return false
+	}
+
+	// rx_min < delta_M
+	if job.GetEarliestArrival() <= rs.latestIdleTime {
+		return true
+	}
+
+	//minWCET := rs.minLowerPriorityWCET(job)
+	maxArrival := rs.jobsByLatestArrival[len(rs.jobsByLatestArrival)-1].GetLatestArrival()
+
+	if !job.PriorityExceeds(rs.maxPriority) && job.GetEarliestArrival() >= maxArrival {
+		return false
+	}
+
+	// There exists a J_i s.t. rx_min <= LST^hat_i and p_x < p_i
+	for _, j := range rs.GetJobs() {
+		if job.GetEarliestArrival() <= rs.getLatestStartTime(j) && job.HigherPriorityThan(*j) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func jobSatisfiesPrecedenceConstraints(rs *reductionSet, job comm.Job, scheduledJobs comm.JobSet) bool {
+	if len(job.GetPredecessors()) == 0 {
+		return true
+	}
+
+	scheduledUnionReductionSet := scheduledJobs
+	scheduledUnionReductionSet = append(scheduledUnionReductionSet, rs.GetJobs()...)
+
+	condition1 := scheduledUnionReductionSet.ContainsByNames(job.GetPredecessors())
+
+	condition2 := true
+	for _, j := range rs.GetJobs() {
+		for _, p := range job.GetPredecessors() {
+			if p == j.Name {
+				condition2 = false
+				break
+			}
+		}
+		if condition2 == false {
+			break
+		}
+	}
+
+	return condition1 && condition2
+
+}
+
+// Returns the smallest WCET among the jobs with a lower priority than job
+func (rs *reductionSet) minLowerPriorityWCET(job comm.Job) comm.Time {
+	minWCET := comm.Time(0)
+	for _, j := range rs.jobsByWCET {
+		if job.HigherPriorityThan(*j) {
+			minWCET = j.GetMaximalCost()
+			return minWCET
+		}
+	}
+	return minWCET
+
 }

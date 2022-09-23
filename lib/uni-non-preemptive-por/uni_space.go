@@ -41,6 +41,8 @@ func ExploreNaively(w comm.JobSet, timeout uint, earlyExit bool, maxDepth uint, 
 	startTime = time.Now()
 	rta = make(responseTimes)
 	workload = w
+	// Preprocess the job such that they release at or after their predecessors release
+	workload.PreprocessJobs()
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
 }
@@ -50,6 +52,8 @@ func Explore(w comm.JobSet, timeout uint, earlyExit bool, maxDepth uint, v *verb
 	startTime = time.Now()
 	rta = make(responseTimes)
 	workload = w
+	// Preprocess the job such that they release at or after their predecessors release
+	workload.PreprocessJobs()
 	explore(workload, timeout, earlyExit, maxDepth)
 	elapsedTime = time.Since(startTime)
 }
@@ -113,7 +117,7 @@ func exploreState(s *State) bool {
 	logger.Debug("Next range: ", nextRange.String())
 
 	// Iterate over all incomplete jobs that are released no later than nextRange.End
-	var eligible_successors comm.JobSet
+	var eligibleSuccessors comm.JobSet
 	for _, jt := range jobsByEarliestArrival {
 		if jt.Arrival.Start < s.EarliestPendingRelease {
 			continue
@@ -130,13 +134,12 @@ func exploreState(s *State) bool {
 		logger.Debug("+ ", jt.Name)
 		if isEligibleSuccessor(s, *jt) {
 			logger.Debug("  --> can be next ")
-			//schedule(s, *jt)
-			eligible_successors = append(eligible_successors, jt)
-			//foundJob = true
+			eligibleSuccessors = append(eligibleSuccessors, jt)
 		}
 	}
-	if len(eligible_successors) > 1 {
-		rs := CreateReductionSet(s, eligible_successors)
+	if len(eligibleSuccessors) > 1 {
+
+		rs := CreateReductionSet(s, eligibleSuccessors)
 		for true {
 			if rs.HasPotentialDeadlineMisses() {
 				logger.Debug("  --> has potential deadline misses")
@@ -144,21 +147,24 @@ func exploreState(s *State) bool {
 			}
 
 			var interferingJobs comm.JobSet
-			//for _, jt := range jobsByEarliestArrival {
-			//	if jt.Arrival.Start < s.EarliestPendingRelease {
-			//		continue
-			//	}
-			//
-			//	if isDispatched(s.ScheduledJobs, *jt) {
-			//		continue
-			//	}
-			//
-			//	if jt.GetEarliestArrival() > rs.GetLatestBusyTime()-rs.GetMinWCET() {
-			//		break
-			//	}
-			//
-			//	//	TODO: Implement the precedence constraint
-			//}
+			for _, jt := range jobsByEarliestArrival {
+				if jt.GetEarliestArrival() < s.EarliestPendingRelease {
+					continue
+				}
+
+				if isDispatched(s.ScheduledJobs, *jt) {
+					continue
+				}
+
+				if jt.GetEarliestArrival() > rs.GetLatestBusyTime()-rs.GetMinWCET() {
+					break
+				}
+
+				if rs.CanInterfere(*jt, s.ScheduledJobs) {
+					logger.Debug("  --> interfering with ", jt.Name)
+					interferingJobs = append(interferingJobs, jt)
+				}
+			}
 
 			if interferingJobs.Empty() {
 				logger.Debug("  --> no interfering jobs")
@@ -176,16 +182,16 @@ func exploreState(s *State) bool {
 		}
 		if !rs.HasPotentialDeadlineMisses() {
 			logger.Debug("  --> Partial-order reduction is safe")
-			//TODO: Implement later
 			scheduleReductionSet(s, rs)
 			foundJob = true
+			return foundJob
+		} else {
+			logger.Debug("  --> Partial-order reduction is unsafe")
 		}
-	} else {
-		logger.Debug("  --> Partial-order reduction is not safe ")
-		for _, jt := range eligible_successors {
-			schedule(s, *jt)
-			foundJob = true
-		}
+	}
+	for _, jt := range eligibleSuccessors {
+		schedule(s, *jt)
+		foundJob = true
 	}
 
 	return foundJob
@@ -255,7 +261,6 @@ func getFrontStates() []*State {
 	var frontStates []*State
 	for _, leaf := range leaves {
 		s := states.GetState(fmt.Sprint(leaf))
-		// fmt.Println(state.String())
 		frontStates = append(frontStates, s)
 
 	}
@@ -297,6 +302,14 @@ func isDispatched(jobs comm.JobSet, job comm.Job) bool {
 	return false
 }
 
+func ready(state *State, job comm.Job) bool {
+	if !state.ScheduledJobs.ContainsByNames(job.GetPredecessors()) {
+		return false
+	}
+
+	return true
+}
+
 func priorityEligible(s *State, j comm.Job, at comm.Time) bool {
 	return !certainlyReleasedHigherPriorityExists(s, j, at)
 }
@@ -329,11 +342,10 @@ func certainlyReleasedHigherPriorityExists(s *State, j comm.Job, at comm.Time) b
 			continue
 		}
 
-		// TODO: implement later
 		// ignore jobs that aren't yet ready
-		// if (!ready(s, j)){
-		// 	continue
-		// }
+		if !ready(s, j) {
+			continue
+		}
 
 		// check priority
 		if jt.HigherPriorityThan(j) {
@@ -380,10 +392,9 @@ func isEligibleSuccessor(s *State, j comm.Job) bool {
 		return false
 	}
 
-	// TODO: implement later
-	// if !ready(){
-	// 	return false
-	// }
+	if !ready(s, j) {
+		return false
+	}
 
 	t_s := nextEarliestStartTime(s, j)
 
@@ -505,7 +516,9 @@ func scheduleReductionSet(parentState *State, rs *reductionSet) {
 	if beNaive {
 		makeStateForReductionSet(finishRange, alreadyScheduled, earliestPossibleJobReleaseForReductionSet(parentState, rs), parentState, rs)
 	} else {
-
+		if !tryToMergeForReductionSet(finishRange, alreadyScheduled, earliestPossibleJobReleaseForReductionSet(parentState, rs), parentState, rs) {
+			makeStateForReductionSet(finishRange, alreadyScheduled, earliestPossibleJobReleaseForReductionSet(parentState, rs), parentState, rs)
+		}
 	}
 
 	for _, j := range rs.GetJobs() {
@@ -646,6 +659,7 @@ func tryToMerge(finishTime comm.Interval, j comm.JobSet, earliestReleasePending 
 			s.Merge(newState)
 			dag.UpdateVertexLabel(s.GetID(), s.GetLabel())
 			dag.AddEdge(parentState.GetID(), s.GetID(), edgeLabel)
+			//logger.Debug("Successfully merged normal state ", s.GetID(), " with state ", newState.GetID())
 			return true
 
 		}
@@ -653,6 +667,29 @@ func tryToMerge(finishTime comm.Interval, j comm.JobSet, earliestReleasePending 
 	}
 	return false
 
+}
+
+func tryToMergeForReductionSet(finishTime comm.Interval, jobs comm.JobSet, earliestReleasePending comm.Time,
+	parentState *State, rs *reductionSet) bool {
+
+	newState := NewState(statesIndex, finishTime, jobs, earliestReleasePending)
+	tempStates := states.getStatesWithSameJobs(jobs)
+
+	edgeLabel := rs.GetLabel()
+	edgeLabel += "\\nES=" + fmt.Sprint(rs.GetEarliestStartTime()) + "\\nLS=" + fmt.Sprint(rs.GetLatestStartTimes())
+	edgeLabel += "\\nEF=" + fmt.Sprint(finishTime.Start) + "\\nLF=" + fmt.Sprint(finishTime.End)
+
+	for _, s := range tempStates {
+		if s.IsMergePossible(newState) {
+			s.Merge(newState)
+			dag.UpdateVertexLabel(s.GetID(), s.GetLabel())
+			dag.AddEdge(parentState.GetID(), s.GetID(), edgeLabel)
+			return true
+
+		}
+
+	}
+	return false
 }
 
 func updateFinishTimes(j comm.Job, finishTime comm.Interval) {
