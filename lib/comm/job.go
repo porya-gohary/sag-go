@@ -106,7 +106,7 @@ func (j JobSet) AbstractString() string {
 func (S JobSet) SortByEarliestArrival() JobSet {
 	sort.Slice(S, func(i, j int) bool {
 		if S[i].Arrival.Start == S[j].Arrival.Start {
-			return S[i].Arrival.End < S[j].Arrival.End
+			return S[i].Name < S[j].Name
 		}
 		return S[i].Arrival.Start < S[j].Arrival.Start
 	})
@@ -115,6 +115,9 @@ func (S JobSet) SortByEarliestArrival() JobSet {
 
 func (S JobSet) SortByLatestArrival() JobSet {
 	sort.Slice(S, func(i, j int) bool {
+		if S[i].Arrival.End == S[j].Arrival.End {
+			return S[i].Name < S[j].Name
+		}
 		return S[i].Arrival.End < S[j].Arrival.End
 	})
 	return S
@@ -129,7 +132,7 @@ func (S JobSet) SortByDeadline() JobSet {
 
 func (S JobSet) SortByPriority() JobSet {
 	sort.Slice(S, func(i, j int) bool {
-		return S[i].Priority < S[j].Priority
+		return S[i].HigherPriorityThan(*S[j])
 	})
 	return S
 }
@@ -193,6 +196,9 @@ func (S JobSet) Contains(job Job) bool {
 }
 
 func (S JobSet) ContainsByNames(names []string) bool {
+	if len(names) == 0 {
+		return true
+	}
 	for _, name := range names {
 		if !S.ContainsByName(name) {
 			return false

@@ -437,7 +437,7 @@ func nextLatestFinishTime(s *State, j comm.Job) comm.Time {
 	otherCertainStart := nextCertainHigherPriorityJobRelease(s, j)
 
 	// TODO: implement later
-	// t_s := nextEarliestStartTime(s, j)
+	//t_s := nextEarliestStartTime(s, j)
 	// iip_latest_start := iip.latest_start(j, t_s, s);
 
 	// t_s'
@@ -448,6 +448,7 @@ func nextLatestFinishTime(s *State, j comm.Job) comm.Time {
 
 	// t_R, t_I
 	// TODO: add iip_latest_start later
+	//lastStartBeforeOther := comm.Minimum(otherCertainStart-comm.Epsilon(), comm.Infinity())
 	lastStartBeforeOther := otherCertainStart - comm.Epsilon()
 
 	logger.Debug("last start before other: ", lastStartBeforeOther)
@@ -533,12 +534,16 @@ func tryToMerge(finishTime comm.Interval, j comm.JobSet, earliestReleasePending 
 
 func updateFinishTimes(j comm.Job, finishTime comm.Interval) {
 	// update the finish time of the job
+	fmt.Println("Finish time: ", finishTime)
+	fmt.Println("old finish time: ", rta[j.Name])
 
 	if _, ok := rta[j.Name]; ok {
 		rta[j.Name] = rta[j.Name].Widen(finishTime)
 	} else {
 		rta[j.Name] = finishTime
 	}
+	fmt.Println("new finish time: ", rta[j.Name])
+	fmt.Println("------------------")
 }
 
 func PrintResponseTimes() {

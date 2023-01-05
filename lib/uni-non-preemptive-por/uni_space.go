@@ -560,7 +560,7 @@ func nextLatestFinishTime(s *State, j comm.Job) comm.Time {
 
 	// t_R, t_I
 	// TODO: add iip_latest_start later
-	lastStartBeforeOther := otherCertainStart - comm.Epsilon()
+	lastStartBeforeOther := comm.Minimum(otherCertainStart-comm.Epsilon(), comm.Infinity())
 
 	logger.Debug("last start before other: ", lastStartBeforeOther)
 
