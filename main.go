@@ -46,8 +46,6 @@ Options:
 	denseTime, _ := arguments.Bool("--dense-time")
 	wantCsv, _ := arguments.Bool("--csv")
 
-	start := time.Now()
-
 	commonLogger := verbose.New("Common")
 	sh := verbose.NewStdoutHandler(true)
 	//Set verbose level
@@ -84,10 +82,14 @@ Options:
 
 	//read precedence file
 	precedenceFileExtension := filepath.Ext(precedenceFile)
-	if precedenceFileExtension == ".csv" {
-		comm.ReadPrecedence(precedenceFile, &workload, commonLogger)
+	if precedenceFile != "" {
+		if precedenceFileExtension == ".csv" {
+			comm.ReadPrecedence(precedenceFile, &workload, commonLogger)
+		} else {
+			commonLogger.Critical("Error: Invalid file extension")
+		}
 	} else {
-		commonLogger.Critical("Error: Invalid file extension")
+		commonLogger.Warning("No precedence file provided")
 	}
 
 	if denseTime {
@@ -98,7 +100,7 @@ Options:
 		csvOutputFile = strings.TrimSuffix(inputFile, filepath.Ext(inputFile)) + ".rta.csv"
 	}
 	dotOutputFile := strings.TrimSuffix(inputFile, filepath.Ext(inputFile))
-
+	start := time.Now()
 	if beNaive {
 		if por {
 			analysisLogger := verbose.New("NP::Uni::Naive::POR")
