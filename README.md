@@ -27,6 +27,9 @@
 </p>
 <h4 align="center">NOTICE: THIS PROGRAM IS UNDER DEVELOPMENT...</h4>
 
+Schedule-abstraction graph (SAG) is a reachability-based response-time analysis for real-time systems.
+
+You can visit the official repository of SAG [here](https://github.com/gnelissen/np-schedulability-analysis).
 
 ## 📦 Required Packages
 This program uses the following packages:
@@ -39,9 +42,15 @@ gopkg.in/yaml.v3
 
 
 ## 📋 Build Instructions
-After installing the required packages, simply build and run the code with:
+For building the program, you can use the following command:
+
 ```
-go run ./main.go -j <input-file> 
+go build ./nptest.go
+```
+
+For running the program, you can use the following command:
+```
+go run ./nptest.go -j <input-file> [options]
 ```
 
 ## 📄 Input Format
@@ -57,7 +66,17 @@ Each input file describes a set of jobs. Each job is described by the following 
 8.   **Priority** — the priority of the job (EDF: set it equal to the deadline)
 
 ## ⚙️ Usage
+For running the test for an example input file `example4.csv`, use the following command:
+```
+go run ./nptest.go -j ./example/example4.csv -r 5 -c
+```
 
+If you already have a compiled version of the program, you can use the following command:
+```
+./nptest -j ./example/example4.csv -r 5 -c
+```
+
+See the help `./nptest --help` or `go run ./nptest.go -h` for further options.
 
 ## 🔧 Features
 - Classic single processor SAG.
@@ -69,9 +88,14 @@ Each input file describes a set of jobs. Each job is described by the following 
 ## 📝 TODO
 - [x] Implementation of uni-processor
 - [x] Implementation of uni-processor with partial-order reduction
-- [ ] Implement IIP
 - [ ] Implement dependency
+- [ ] Implement IIP
 - [ ] Implement global multi-processor
+
+## 🌱 Contribution
+With your feedback and conversation, you can assist me in developing this application.
+- Open pull request with improvements
+- Discuss feedbacks and bugs in issues
 
 ## 📜 License
 Copyright © 2022 [Pourya Gohari](https://pourya-gohari.ir)
